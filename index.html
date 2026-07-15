@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FNAF IRL Multiplayer Security Cameras</title>
     
+    <!-- Retro Pixel Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+
     <!-- PeerJS for P2P networking -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 
@@ -14,7 +19,8 @@
         body {
             background-color: #000;
             color: #fff;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'VT323', monospace;
+            font-size: 1.2rem;
             overflow: hidden;
             margin: 0;
             overscroll-behavior-y: contain; 
@@ -34,7 +40,7 @@
             justify-content: space-between;
             align-items: center;
             z-index: 60;
-            font-size: 0.9rem;
+            font-size: 1.3rem;
             letter-spacing: 1px;
         }
 
@@ -42,10 +48,10 @@
             background: transparent;
             color: #00ff00;
             border: 1px solid #00ff00;
-            padding: 6px 12px;
+            padding: 4px 12px;
             cursor: pointer;
             font-family: inherit;
-            font-size: 0.8rem;
+            font-size: 1.1rem;
             font-weight: bold;
             transition: all 0.2s;
         }
@@ -98,7 +104,7 @@
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background: #070707; color: #ff0000;
-            font-size: 2rem;
+            font-size: 3rem;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             z-index: 3;
             text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
@@ -140,7 +146,7 @@
         .cam-label {
             position: absolute;
             top: 80px; left: 40px;
-            font-size: 2rem; font-weight: bold; color: white;
+            font-size: 2.8rem; font-weight: bold; color: white;
             text-shadow: 2px 2px 0 #000; z-index: 20; letter-spacing: 2px;
         }
 
@@ -166,30 +172,30 @@
         .time-display {
             position: absolute;
             top: 60px; right: 40px;
-            font-size: 3rem; font-weight: bold;
+            font-size: 4rem; font-weight: bold;
             text-shadow: 2px 2px 0 #000; letter-spacing: 2px;
         }
         
         .night-display {
             position: absolute;
-            top: 110px; right: 45px;
-            font-size: 1.2rem; font-weight: bold;
+            top: 130px; right: 45px;
+            font-size: 1.8rem; font-weight: bold;
             text-shadow: 2px 2px 0 #000; letter-spacing: 1px;
         }
 
         .power-display {
             position: absolute;
             bottom: 40px; left: 40px;
-            font-size: 1.5rem; font-weight: bold;
+            font-size: 2.2rem; font-weight: bold;
             text-shadow: 2px 2px 0 #000; line-height: 1.5;
         }
 
         /* Controls */
         #flashlight-btn {
             position: absolute;
-            bottom: 40px; left: 250px;
-            padding: 15px 30px;
-            font-size: 1.2rem; font-family: inherit; font-weight: bold;
+            bottom: 40px; left: 280px;
+            padding: 15px 35px;
+            font-size: 1.6rem; font-family: inherit; font-weight: bold;
             background: rgba(30, 30, 30, 0.85); color: white;
             border: 2px solid white; cursor: pointer; pointer-events: auto;
             touch-action: none; box-shadow: 0 0 10px rgba(255,255,255,0.2);
@@ -200,7 +206,7 @@
         #toggle-monitor-btn {
             position: absolute;
             bottom: 30px; left: 50%; transform: translateX(-50%);
-            padding: 15px 60px; font-size: 1.2rem; font-family: inherit; font-weight: bold;
+            padding: 15px 60px; font-size: 1.8rem; font-family: inherit; font-weight: bold;
             background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid white;
             cursor: pointer; pointer-events: auto; transition: background 0.2s;
             display: none;
@@ -210,7 +216,7 @@
         .camera-map {
             position: absolute;
             bottom: 120px; right: 30px;
-            width: 280px;
+            width: 320px;
             border: 2px solid white; background: rgba(0, 0, 0, 0.8);
             padding: 15px; display: none; pointer-events: auto;
             grid-template-columns: 1fr 1fr; gap: 15px; 
@@ -219,7 +225,7 @@
         .cam-btn {
             background: rgba(10, 10, 10, 0.6); color: #555;
             border: 1px solid #333; padding: 15px 0; cursor: pointer;
-            font-family: inherit; font-size: 0.95rem; font-weight: bold; transition: all 0.1s;
+            font-family: inherit; font-size: 1.4rem; font-weight: bold; transition: all 0.1s;
         }
         .cam-btn.online { color: #00ff00; border-color: #00ff00; }
         .cam-btn.active {
@@ -234,7 +240,7 @@
             z-index: 80; display: none; text-align: center; pointer-events: auto;
         }
         #sabotage-btn {
-            padding: 18px 36px; font-size: 1.1rem; font-family: inherit; font-weight: bold;
+            padding: 18px 36px; font-size: 1.6rem; font-family: inherit; font-weight: bold;
             background: #990000; color: white; border: 2px solid red; cursor: pointer;
             border-radius: 5px; box-shadow: 0 0 20px rgba(255,0,0,0.6);
             transition: all 0.2s;
@@ -250,9 +256,9 @@
 
         #win-screen {
             position: absolute; top:0; left:0; width:100%; height:100%;
-            background: #00; color: white; display: flex; flex-direction: column;
+            background: #000; color: white; display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 250;
-            font-size: 5rem; letter-spacing: 5px; font-weight: bold; text-shadow: 0 0 20px #fff;
+            font-size: 7rem; letter-spacing: 5px; font-weight: bold; text-shadow: 0 0 20px #fff;
             display: none; opacity: 0; transition: opacity 3s;
         }
 
@@ -280,14 +286,6 @@
         #wire-canvas {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%;
-        }
-
-        .system-log {
-            position: absolute; top: 60px; left: 30px;
-            width: 300px; height: 90px;
-            background: rgba(0, 0, 0, 0.6); border: 1px solid #222;
-            color: #00ff00; font-size: 0.65rem; padding: 10px; overflow: hidden;
-            pointer-events: none; z-index: 40; line-height: 1.3; text-shadow: 0 0 2px #00ff00;
         }
 
         #screen-flash {
@@ -352,9 +350,9 @@
 
     <!-- Generator Physical Repair Screen -->
     <div id="generator-repair-overlay">
-        <div style="font-size: 1.3rem; color: #ff3333; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px red; text-align: center; padding: 0 10px;">
+        <div style="font-size: 1.8rem; color: #ff3333; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px red; text-align: center; padding: 0 10px;">
             ⚠️ GENERATOR OFFLINE ⚠️<br>
-            <span style="font-size: 0.8rem; color: #777;">SOLVE WIRES TO RESTORE SYSTEM POWER</span>
+            <span style="font-size: 1.2rem; color: #777;">SOLVE WIRES TO RESTORE SYSTEM POWER</span>
         </div>
         <div id="wire-board">
             <canvas id="wire-canvas"></canvas>
@@ -363,10 +361,7 @@
 
     <!-- Game Over Overlays -->
     <div id="death-screen"></div>
-    <div id="win-screen">5 AM...<br><span style="font-size:6rem; margin-top:20px;">6 AM</span><br><span style="font-size:1.5rem; margin-top:20px;">NIGHT SURVIVED</span></div>
-
-    <!-- Debug Console -->
-    <div class="system-log" id="system-log">> TERMINAL INITIALIZED...</div>
+    <div id="win-screen">5 AM...<br><span style="font-size:8rem; margin-top:20px;">6 AM</span><br><span style="font-size:2.5rem; margin-top:20px;">NIGHT SURVIVED</span></div>
 
     <script>
         const mainMonitor = document.getElementById('main-monitor');
@@ -381,6 +376,7 @@
         let peer = null;
         let currentSlot = 1;
         let wakeLock = null;
+        let sabotageUsed = false; // Tracks if the generator has been compromised this night
 
         const connectedStreams = { 'cam1': null, 'cam2': null, 'cam3': null, 'cam4': null };
         const dataConnections = { 'cam1': null, 'cam2': null, 'cam3': null, 'cam4': null };
@@ -405,11 +401,7 @@
         document.getElementById('room-id-display').innerText = roomHash.toUpperCase();
 
         function logSystem(msg) {
-            const logEl = document.getElementById('system-log');
-            if (logEl) {
-                const lines = logEl.innerHTML.split('<br>');
-                logEl.innerHTML = `> ${msg}<br>` + lines.slice(0, 3).join('<br>');
-            }
+            console.log(`> ${msg}`);
         }
 
         function copyRoomLink() {
@@ -436,9 +428,11 @@
                 offlineScreen.classList.add('pitch-black-outage');
                 offlineScreen.innerText = "FIX THE GENERATOR";
                 offlineScreen.style.display = "flex";
-                mainMonitor.style.display = "none";
+                // Do not set mainMonitor.style.display to 'none'.
+                // Setting it to 'none' causes mobile OS engines to shut down the WebRTC video capture entirely.
             } else {
                 offlineScreen.classList.remove('pitch-black-outage');
+                offlineScreen.style.display = "none"; // Restore and reveal visual feed
             }
         }
 
@@ -528,32 +522,6 @@
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.1);
             } catch(e){}
-        }
-
-        function playWinSound() {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const now = audioCtx.currentTime;
-                const chimeNotes = [
-                    { f: 415.30, d: 0.6, t: 0.0 }, 
-                    { f: 329.63, d: 0.6, t: 0.6 }, 
-                    { f: 369.99, d: 0.6, t: 1.2 }, 
-                    { f: 246.94, d: 1.2, t: 1.8 }  
-                ];
-                chimeNotes.forEach(note => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'triangle'; 
-                    osc.frequency.setValueAtTime(note.f, now + note.t);
-                    gain.gain.setValueAtTime(0, now + note.t);
-                    gain.gain.linearRampToValueAtTime(0.25, now + note.t + 0.05);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + note.t + note.d);
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start(now + note.t);
-                    osc.stop(now + note.t + note.d);
-                });
-            } catch (e) {}
         }
 
         // ==========================================
@@ -751,8 +719,7 @@
                     }
                     if (data.type === 'motion' && isMonitorUp && !isPowerOut) {
                         if (targetSlot === currentCamId) {
-                            /* Blinds the guard with thick static for 600ms on motion. 
-                               Because motion is sent every 300ms, continuous movement keeps the static 100% active. */
+                            /* Blinds the guard with thick static for 600ms on motion. */
                             triggerVisualStatic(600); 
                         }
                     }
@@ -819,7 +786,6 @@
             setTimeout(checkMotionLoop, 150); 
         }
 
-        // Delay media streaming until slot is established so we can route front/back lens
         function tryRegisterCamSlot(slotNum) {
             if (slotNum > 4) {
                 document.getElementById('slot-status').innerText = "ROOM FULL";
@@ -850,7 +816,6 @@
                     camLabel.innerText = `CAM 0${slotNum} - ONLINE`;
                 }
                 
-                document.getElementById('system-log').style.display = 'none';
                 document.getElementById('recording-dot').style.display = 'block';
                 
                 mainMonitor.srcObject = localCameraStream;
@@ -875,13 +840,11 @@
             });
         }
 
-        // Tailored hardware selection depending on Camera Slot assignment
         async function acquireCameraStream(slotNum) {
             const statusEl = document.getElementById('slot-status');
             
             try {
                 if (slotNum === 1) {
-                    // Generator camera specifically boots the selfie/front camera!
                     logSystem("GENERATOR CAM DETECTED. FORCING FRONT-FACING CAMERA...");
                     localCameraStream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -890,7 +853,6 @@
                     logSystem("FRONT SELFIE LENS LOCKED. READY FOR GENERATOR WIRES.");
                     return true;
                 } else {
-                    // Cams 2, 3, and 4 use the Back Camera + sweep for physical LED support!
                     logSystem(`CAM ${slotNum} DETECTED. SWEEPING LENSES FOR LED CONTROL...`);
                     
                     const tempStream = await navigator.mediaDevices.getUserMedia({
@@ -985,7 +947,6 @@
                     
                     if (currentSlot !== 1) {
                         setPitchBlackOutage(false);
-                        mainMonitor.style.display = "block";
                     }
                     camLabel.innerText = currentSlot === 1 ? `CAM 01 (GEN ROOM) - ONLINE` : `CAM 0${currentSlot} - ONLINE`;
                 }
@@ -1001,9 +962,12 @@
         }
 
         function triggerSabotage() {
+            if (sabotageUsed) return; // Prevent multi-triggers if clicked rapidly
+            sabotageUsed = true;
+
             const btn = document.getElementById('sabotage-btn');
             btn.disabled = true;
-            btn.innerText = "⚡ GENERATOR COMPROMISED";
+            btn.innerText = "⚡ GENERATOR COMPROMISED (0/1)";
             
             if (guardDataConnection && guardDataConnection.open) {
                 guardDataConnection.send({ type: 'sabotage' });
@@ -1030,10 +994,11 @@
             document.getElementById('generator-repair-overlay').style.display = 'none';
             playGeneratorStartSound();
 
+            // Generator stays locked/disabled for the remainder of the night session
             const btn = document.getElementById('sabotage-btn');
             if (btn) {
-                btn.disabled = false;
-                btn.innerText = "⚡ SABOTAGE GENERATOR (1/1)";
+                btn.disabled = true;
+                btn.innerText = "⚡ GENERATOR DEPLETED (0/1)";
             }
 
             if (guardDataConnection && guardDataConnection.open) {
@@ -1132,7 +1097,6 @@
             return { x, y };
         }
 
-        // Mouse & Touch Interaction
         function onPuzzleStart(e) {
             const coords = getPuzzleCoords(e);
             
@@ -1159,6 +1123,7 @@
             e.preventDefault();
         }
 
+        // Play win sound removed here as it is triggered differently now
         function onPuzzleEnd(e) {
             if (draggingFrom === null) return;
             
