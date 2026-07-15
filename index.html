@@ -114,7 +114,7 @@
             background: #000000 !important;
             position: fixed !important; 
             top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 200 !important; /* Covers the scanlines, labels, and lobby bar */
+            z-index: 200 !important; 
             color: #ff0000;
         }
 
@@ -125,6 +125,20 @@
             background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
             background-size: 100% 4px;
             pointer-events: none; z-index: 5;
+        }
+
+        /* TV Snow Static Effect (Triggered on motion/camera switch) */
+        #camera-static {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 15;
+            pointer-events: none;
+            opacity: 0;
+            /* Real TV snow generated via SVG data URI */
+            background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+            background-color: rgba(50, 50, 50, 0.5);
+            mix-blend-mode: screen;
+            transition: opacity 0.1s;
         }
 
         .cam-label {
@@ -217,17 +231,6 @@
             border-color: #fff !important; box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
-        /* IRL Motion Detector Alerts */
-        @keyframes motion-flash {
-            0% { background: #ffcc00; color: black; box-shadow: 0 0 15px #ffcc00; }
-            50% { background: #ff3333; color: white; box-shadow: 0 0 25px #ff3333; }
-            100% { background: #ffcc00; color: black; box-shadow: 0 0 15px #ffcc00; }
-        }
-        .cam-btn.motion-alert {
-            animation: motion-flash 0.5s infinite;
-            border-color: #ffcc00 !important;
-        }
-
         /* Animatronic / Saboteur Controls */
         #cam-controls {
             position: absolute;
@@ -312,6 +315,7 @@
         <div class="light-overlay" id="light-overlay"></div>
         <div class="offline-screen" id="offline-screen">SYSTEM OFFLINE</div>
         <div class="scanlines"></div>
+        <div id="camera-static"></div>
         
         <div class="cam-label" id="cam-label">LOBBY</div>
         <div class="recording-dot" id="recording-dot"></div>
@@ -373,6 +377,7 @@
         const camLabel = document.getElementById('cam-label');
         const offlineScreen = document.getElementById('offline-screen');
         const buttons = document.querySelectorAll('.cam-btn');
+        const cameraStatic = document.getElementById('camera-static');
 
         let myRole = null; 
         let localCameraStream = null;
@@ -395,13 +400,6 @@
         let currentHour = 0; 
         let gameTick = 0;
         let powerLevel = 100.0;
-
-        // Motion detection properties (Camera devices only)
-        let lastFrameData = null;
-        let motionCanvas = null;
-        let motionCtx = null;
-        let motionInterval = null;
-        let lastMotionTime = 0;
 
         let roomHash = window.location.hash.substring(1);
         if (!roomHash) {
@@ -449,8 +447,40 @@
         }
 
         // ==========================================
-        // RETRO AUDIO ENGINE
+        // RETRO AUDIO & STATIC ENGINE
         // ==========================================
+        function playStaticSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const bufferSize = audioCtx.sampleRate * 0.3; // 0.3 seconds of white noise
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1; // Generate white noise
+                }
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                noise.connect(gain);
+                gain.connect(audioCtx.destination);
+                noise.start();
+            } catch(e) {}
+        }
+
+        // Triggered by camera switch or motion
+        let motionStaticTimeout = null;
+        function triggerVisualStatic(duration = 250) {
+            if (cameraStatic) {
+                cameraStatic.style.opacity = "0.8"; // Show heavy snow
+                clearTimeout(motionStaticTimeout);
+                motionStaticTimeout = setTimeout(() => { 
+                    cameraStatic.style.opacity = "0"; 
+                }, duration);
+            }
+        }
+
         function playPowerOutSound() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -502,23 +532,6 @@
                 gain.connect(audioCtx.destination);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.1);
-            } catch(e){}
-        }
-
-        function playMotionBeep() {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const now = audioCtx.currentTime;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, now); 
-                gain.gain.setValueAtTime(0.12, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(now);
-                osc.stop(now + 0.18);
             } catch(e){}
         }
 
@@ -623,6 +636,8 @@
             if (isMonitorUp) {
                 monitorCont.style.opacity = '1';
                 camMap.style.display = 'grid';
+                playStaticSound();     
+                triggerVisualStatic(300); 
             } else {
                 monitorCont.style.opacity = '0';
                 camMap.style.display = 'none';
@@ -648,19 +663,16 @@
             document.getElementById('monitor-container').style.display = 'none';
         }
 
-        // SABOTAGE OUTAGE (The power drops. Guard's screens go totally black!)
         function triggerSabotageOutage() {
             isPowerOut = true;
             triggerFlashlight(false);
             playPowerOutSound();
 
-            // Set everything to pitch black and remove HUD
             setPitchBlackOutage(true);
             document.getElementById('guard-hud').style.display = 'none';
 
             logSystem("CRITICAL: GENERATOR DOWN. GET UP AND GO FIX CAM 1!");
 
-            // Send outage message to ALL cameras so they display correct status
             for (let slot in dataConnections) {
                 const conn = dataConnections[slot];
                 if (conn && conn.open) {
@@ -670,13 +682,11 @@
             updateCameraMapUI();
         }
 
-        // RESTORE POWER (Fires when the Generator Device fixes the wires!)
         function restorePower() {
             isPowerOut = false;
             powerLevel = 100.0; 
             playGeneratorStartSound();
 
-            // Bring the HUD back and turn off pitch black mode
             document.getElementById('guard-hud').style.display = 'block';
             setPitchBlackOutage(false);
             
@@ -686,28 +696,11 @@
             updateMonitorFeed();
             updateCameraMapUI();
 
-            // Broadcast power restore back to ALL cameras so they return to normal
             for (let slot in dataConnections) {
                 const conn = dataConnections[slot];
                 if (conn && conn.open) {
                     try { conn.send({ type: 'powerrestored' }); } catch(e){}
                 }
-            }
-        }
-
-        // Handle Live Motion alert on the map
-        function triggerMotionAlert(camNum) {
-            if (isPowerOut) return; // Can't scan map with dead generator
-            
-            const btn = document.querySelector(`.cam-btn[data-cam="cam${camNum}"]`);
-            if (btn) {
-                btn.classList.add('motion-alert');
-                playMotionBeep();
-                logSystem(`WARNING: MOTION DETECTED ON CAM 0${camNum}`);
-                
-                setTimeout(() => {
-                    btn.classList.remove('motion-alert');
-                }, 2500);
             }
         }
 
@@ -757,23 +750,30 @@
                 });
                 
                 conn.on('data', (data) => {
-                    // LISTENERS FOR SYNCING GAME STATE
                     if (data.type === 'sabotage') {
                         triggerSabotageOutage();
                     }
                     if (data.type === 'powerrestored') {
                         restorePower();
                     }
-                    if (data.type === 'motion') {
-                        triggerMotionAlert(data.cam);
+                    // MOTION DETECTED: If the motion is on the active camera, blast the static snow!
+                    if (data.type === 'motion' && isMonitorUp && !isPowerOut) {
+                        if (targetSlot === currentCamId) {
+                            triggerVisualStatic(400); 
+                        }
                     }
                 });
             });
         }
 
         // ==========================================
-        // CAMERA DEVICE MODE (CAM 1 is the Generator)
+        // CAMERA DEVICE MODE & MOTION DETECTION
         // ==========================================
+        let motionCanvas = document.createElement('canvas');
+        let motionCtx = motionCanvas.getContext('2d', { willReadFrequently: true });
+        let lastImageData = null;
+        let lastMotionSentTime = 0;
+
         async function initCameraMode() {
             myRole = 'cam';
             document.getElementById('slot-status').innerText = "PROBING LENSES...";
@@ -786,6 +786,53 @@
             } catch (err) {
                 document.getElementById('slot-status').innerText = "CAMERA BLOCKED";
             }
+        }
+
+        function checkMotionLoop() {
+            if (myRole !== 'cam' || !localCameraStream) return;
+            
+            if (mainMonitor.videoWidth === 0) {
+                setTimeout(checkMotionLoop, 100);
+                return;
+            }
+
+            // Low resolution for fast processing
+            motionCanvas.width = 64; 
+            motionCanvas.height = 48;
+            motionCtx.drawImage(mainMonitor, 0, 0, motionCanvas.width, motionCanvas.height);
+            
+            let currentImageData = motionCtx.getImageData(0, 0, motionCanvas.width, motionCanvas.height);
+            let isMoving = false;
+            
+            if (lastImageData) {
+                let diffCount = 0;
+                for (let i = 0; i < currentImageData.data.length; i += 4) {
+                    let rDiff = Math.abs(currentImageData.data[i] - lastImageData.data[i]);
+                    let gDiff = Math.abs(currentImageData.data[i+1] - lastImageData.data[i+1]);
+                    let bDiff = Math.abs(currentImageData.data[i+2] - lastImageData.data[i+2]);
+                    if (rDiff + gDiff + bDiff > 100) { 
+                        diffCount++;
+                    }
+                }
+                // If enough pixels changed, trigger motion
+                if (diffCount > 150) { 
+                    isMoving = true;
+                }
+            }
+            lastImageData = currentImageData;
+            
+            if (isMoving) {
+                const now = Date.now();
+                // Send signal at most every 300ms to avoid flooding WebRTC
+                if (now - lastMotionSentTime > 300) {
+                    if (guardDataConnection && guardDataConnection.open) {
+                        guardDataConnection.send({ type: 'motion' });
+                    }
+                    lastMotionSentTime = now;
+                }
+            }
+            
+            setTimeout(checkMotionLoop, 150); // Check 6-7 times a second
         }
 
         function tryRegisterCamSlot(slotNum) {
@@ -817,9 +864,7 @@
                 offlineScreen.style.display = "none";
 
                 requestWakeLock(); 
-                
-                // Initialize Computer Vision Motion Detection
-                startMotionDetection();
+                checkMotionLoop(); // Start motion detector
 
                 peer.on('error', (err) => {
                     if (err.type === 'peer-unavailable') setTimeout(camConnectToGuard, 4000);
@@ -852,12 +897,9 @@
                 }
                 if (data.type === 'sabotage_outage') {
                     playPowerOutSound();
-                    
-                    // IF WE ARE THE CAM 1 DEVICE: Open up the physical repair wire board overlay!
                     if (currentSlot === 1) {
                         openPhysicalGeneratorRepair();
                     } else {
-                        // Other cameras go pitch black too to simulate total blackout!
                         document.getElementById('monitor-container').style.opacity = '1'; 
                         setPitchBlackOutage(true);
                         camLabel.innerText = "SYSTEM SHUTDOWN - GENERATOR FAILURE";
@@ -891,58 +933,6 @@
             guardMediaCall = peer.call(guardId, localCameraStream);
         }
 
-        // ==========================================
-        // REAL-LIFE COMPUTER VISION MOTION SENSOR
-        // ==========================================
-        function startMotionDetection() {
-            if (motionInterval) clearInterval(motionInterval);
-            
-            motionCanvas = document.createElement('canvas');
-            motionCanvas.width = 32;
-            motionCanvas.height = 24;
-            motionCtx = motionCanvas.getContext('2d');
-            lastFrameData = null;
-
-            motionInterval = setInterval(() => {
-                if (!localCameraStream || myRole !== 'cam') return;
-                
-                // Analyze video frame if it has fully loaded
-                if (mainMonitor && mainMonitor.readyState === mainMonitor.HAVE_ENOUGH_DATA) {
-                    try {
-                        // Draw downscaled frame to hidden canvas to isolate motion pixel-by-pixel
-                        motionCtx.drawImage(mainMonitor, 0, 0, 32, 24);
-                        const imgData = motionCtx.getImageData(0, 0, 32, 24);
-                        const data = imgData.data;
-                        
-                        if (lastFrameData) {
-                            let totalDiff = 0;
-                            for (let i = 0; i < data.length; i += 4) {
-                                const rDiff = Math.abs(data[i] - lastFrameData[i]);
-                                const gDiff = Math.abs(data[i+1] - lastFrameData[i+1]);
-                                const bDiff = Math.abs(data[i+2] - lastFrameData[i+2]);
-                                totalDiff += (rDiff + gDiff + bDiff) / 3;
-                            }
-                            
-                            const averageDiff = totalDiff / (32 * 24);
-                            
-                            // If average pixel shift goes past normal noise (Threshold 12), fire alert!
-                            if (averageDiff > 12) { 
-                                const now = Date.now();
-                                if (now - lastMotionTime > 4000) { // 4-second cooldown to avoid spamming network
-                                    lastMotionTime = now;
-                                    if (guardDataConnection && guardDataConnection.open) {
-                                        guardDataConnection.send({ type: 'motion', cam: currentSlot });
-                                    }
-                                }
-                            }
-                        }
-                        lastFrameData = data;
-                    } catch(e) {}
-                }
-            }, 600); // Scans ~1.6 times per second to maximize battery and prevent system lag
-        }
-
-        // Animatronic triggers sabotage from CAM 1 screen
         function triggerSabotage() {
             const btn = document.getElementById('sabotage-btn');
             btn.disabled = true;
@@ -955,7 +945,6 @@
             openPhysicalGeneratorRepair();
         }
 
-        // Open the wire puzzle overlay physically on CAM 1
         function openPhysicalGeneratorRepair() {
             document.getElementById('generator-repair-overlay').style.display = 'flex';
             
@@ -970,7 +959,6 @@
             drawWirePuzzle();
         }
 
-        // Called when Guard physically finishes the wires on CAM 1
         function completePhysicalGeneratorRepair() {
             document.getElementById('generator-repair-overlay').style.display = 'none';
             playGeneratorStartSound();
@@ -1035,7 +1023,6 @@
                 ctx.stroke();
             });
 
-            // Draw left terminals
             for (let i = 0; i < 4; i++) {
                 ctx.beginPath();
                 ctx.arc(leftX, leftY[i], 15, 0, Math.PI * 2);
@@ -1051,7 +1038,6 @@
                 ctx.fill();
             }
 
-            // Draw right terminals
             for (let i = 0; i < 4; i++) {
                 ctx.beginPath();
                 ctx.arc(rightX, rightY[i], 15, 0, Math.PI * 2);
@@ -1225,6 +1211,9 @@
 
         function switchCamera(event, camId, labelText) {
             if (myRole !== 'guard' || isPowerOut) return;
+
+            playStaticSound();
+            triggerVisualStatic(250);
 
             triggerFlashlight(false); 
             currentCamId = camId;
