@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FNAF Multiplayer Security Cameras</title>
+    <title>FNAF IRL Multiplayer Security Cameras</title>
     
     <!-- PeerJS for P2P networking -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -21,7 +21,7 @@
             user-select: none;
         }
 
-        /* Top Retro Status Console */
+        /* Top Status Console */
         .lobby-bar {
             position: absolute;
             top: 0;
@@ -109,26 +109,7 @@
             line-height: 1.5;
         }
 
-        /* Heavy Static for Motion Detection */
-        .motion-static-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: repeating-radial-gradient(circle, #fff, #111 2px, #fff 4px), repeating-linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.3) 2px, transparent 2px, transparent 4px);
-            background-size: 15px 15px, 100% 4px;
-            opacity: 0.85; 
-            z-index: 4;
-            display: none;
-            pointer-events: none;
-            animation: intenseStatic 0.05s infinite;
-        }
-
-        @keyframes intenseStatic {
-            0% { background-position: 0 0, 0 0; }
-            50% { background-position: 5px 10px, 0 2px; }
-            100% { background-position: -5px -5px, 0 4px; }
-        }
-
-        /* Ambient scanlines */
+        /* Scanlines */
         .scanlines {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -144,7 +125,6 @@
             text-shadow: 2px 2px 0 #000; z-index: 20; letter-spacing: 2px;
         }
 
-        /* Recording Dot for Phones */
         .recording-dot {
             position: absolute;
             top: 85px; right: 40px;
@@ -153,17 +133,6 @@
             border-radius: 50%;
             z-index: 20; display: none;
             box-shadow: 0 0 15px red; animation: blink 1.5s infinite;
-        }
-
-        /* Local Warning Banner for Cam Users */
-        .motion-alert-banner {
-            position: absolute;
-            top: 130px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 0, 0, 0.85); color: #fff;
-            font-weight: bold; padding: 10px 20px; font-size: 0.85rem;
-            border-radius: 4px; display: none; z-index: 50;
-            box-shadow: 0 0 15px rgba(255,0,0,0.7); border: 1px solid white;
-            letter-spacing: 1.5px; animation: blink 1s infinite; text-align: center;
         }
 
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
@@ -239,17 +208,7 @@
             border-color: #fff !important; box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
-        /* Generator Outage Repair Button (For Guard) */
-        #repair-grid-btn {
-            position: absolute;
-            bottom: 40px; left: 50%; transform: translateX(-50%);
-            padding: 20px 40px; font-size: 1.3rem; font-family: inherit; font-weight: bold;
-            background: #ff0000; color: white; border: 3px solid white;
-            cursor: pointer; pointer-events: auto; animation: blink 1s infinite;
-            display: none; z-index: 120; box-shadow: 0 0 20px rgba(255,0,0,0.8);
-        }
-
-        /* Generator Saboteur controls (For Player 2/CAM 1) */
+        /* Animatronic / Saboteur Controls (Overlay on the physical Cam 1 screen) */
         #cam-controls {
             position: absolute;
             bottom: 30px; left: 50%; transform: translateX(-50%);
@@ -263,45 +222,41 @@
         }
         #sabotage-btn:disabled { background: #222; border-color: #555; color: #555; box-shadow: none; cursor: default; }
 
-        /* Power Out Sabotage Overlay */
-        #power-out-screen {
-            position: absolute; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.85); z-index: 95; display: none; pointer-events: none;
-        }
-
-        /* Pure Black Death Screen Overlay (No Text, Covers Everything) */
+        /* Full Screen Death / Win Overlays */
         #death-screen {
             position: absolute; top:0; left:0; width:100%; height:100%;
-            background: #000000; z-index: 200;
+            background: #000000; z-index: 250;
             display: none; pointer-events: none;
         }
 
         #win-screen {
             position: absolute; top:0; left:0; width:100%; height:100%;
             background: #000; color: white; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 101;
+            justify-content: center; align-items: center; z-index: 250;
             font-size: 5rem; letter-spacing: 5px; font-weight: bold; text-shadow: 0 0 20px #fff;
             display: none; opacity: 0; transition: opacity 3s;
         }
 
-        /* Wire Repair Minigame Box */
-        #wire-minigame {
+        /* REAL-LIFE GENERATOR REPAIR OVERLAY (Shows directly on CAM 1 Device screen when sabotaged) */
+        #generator-repair-overlay {
             display: none;
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 15, 15, 0.98);
+            background: #080808;
             z-index: 150;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             pointer-events: auto;
         }
+
         #wire-board {
             position: relative;
-            width: 300px; height: 400px;
-            background: #252525; border: 4px solid #444;
-            border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            width: 320px; height: 400px;
+            background: #1b1b1b; border: 4px solid #ff3333;
+            border-radius: 8px; box-shadow: 0 0 35px rgba(255,0,0,0.4);
             touch-action: none;
+            margin-top: 20px;
         }
         #wire-canvas {
             position: absolute; top: 0; left: 0;
@@ -335,16 +290,14 @@
     <div class="monitor-container" id="monitor-container">
         <video id="main-monitor" autoplay playsinline muted></video>
         <div class="light-overlay" id="light-overlay"></div>
-        <div class="motion-static-overlay" id="motion-static-overlay"></div>
         <div class="offline-screen" id="offline-screen">SYSTEM OFFLINE</div>
         <div class="scanlines"></div>
         
         <div class="cam-label" id="cam-label">LOBBY</div>
         <div class="recording-dot" id="recording-dot"></div>
-        <div class="motion-alert-banner" id="motion-alert-banner">⚠️ MOTION DETECTED - STATIC INTERFERENCE ⚠️</div>
     </div>
 
-    <!-- Animatronic / Saboteur Interface controls -->
+    <!-- Saboteur Controls (Visible on CAM 1 Device) -->
     <div id="cam-controls">
         <button id="sabotage-btn" onclick="triggerSabotage()">⚡ SABOTAGE GENERATOR (1/1)</button>
     </div>
@@ -368,7 +321,6 @@
         </button>
 
         <button id="toggle-monitor-btn" onclick="toggleMonitor()">MONITOR</button>
-        <button id="repair-grid-btn" onclick="openWirePuzzle()">🔧 REPAIR GENERATOR</button>
 
         <div class="camera-map" id="camera-map">
             <button class="cam-btn active" data-cam="cam1" onclick="switchCamera(event, 'cam1', 'CAM 01 (GEN ROOM)')">CAM 01</button>
@@ -378,17 +330,18 @@
         </div>
     </div>
 
-    <!-- Wire Sorting Minigame Modal -->
-    <div id="wire-minigame">
-        <div style="font-size: 1.2rem; color: #ff3333; margin-bottom: 20px; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 5px red;">⚠️ REWIRING SYSTEM JUNCTION ⚠️</div>
+    <!-- Generator Physical Repair Screen (Only active on CAM 1 screen when sabotaged) -->
+    <div id="generator-repair-overlay">
+        <div style="font-size: 1.3rem; color: #ff3333; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px red; text-align: center; padding: 0 10px;">
+            ⚠️ GENERATOR OFFLINE ⚠️<br>
+            <span style="font-size: 0.8rem; color: #777;">SOLVE WIRES TO RESTORE SYSTEM POWER</span>
+        </div>
         <div id="wire-board">
             <canvas id="wire-canvas"></canvas>
         </div>
-        <button onclick="document.getElementById('wire-minigame').style.display='none'" style="margin-top:25px; padding:12px 24px; background:#333; color:white; border:2px solid #555; cursor:pointer; font-family:inherit; font-weight:bold;">RETURN TO DESK</button>
     </div>
 
-    <!-- Full Screen Events -->
-    <div id="power-out-screen"></div>
+    <!-- Game Over overlays -->
     <div id="death-screen"></div>
     <div id="win-screen">5 AM...<br><span style="font-size:6rem; margin-top:20px;">6 AM</span><br><span style="font-size:1.5rem; margin-top:20px;">NIGHT SURVIVED</span></div>
 
@@ -399,7 +352,6 @@
         const mainMonitor = document.getElementById('main-monitor');
         const camLabel = document.getElementById('cam-label');
         const offlineScreen = document.getElementById('offline-screen');
-        const motionStaticOverlay = document.getElementById('motion-static-overlay');
         const buttons = document.querySelectorAll('.cam-btn');
 
         let myRole = null; 
@@ -411,25 +363,16 @@
 
         const connectedStreams = { 'cam1': null, 'cam2': null, 'cam3': null, 'cam4': null };
         const dataConnections = { 'cam1': null, 'cam2': null, 'cam3': null, 'cam4': null };
-        const motionStates = { 'cam1': false, 'cam2': false, 'cam3': false, 'cam4': false };
 
         let guardDataConnection = null; 
         let guardMediaCall = null;
 
-        // Motion analysis variables
-        let motionCanvas = null;
-        let motionCtx = null;
-        let prevFrameData = null;
-        let motionTimeout = null;
-        let isCurrentlyMoving = false;
-        let ignoreMotionUntil = 0;
-
-        // FNAF Game State Mechanics
+        // Game state variables
         let gameActive = false;
         let isMonitorUp = true;
         let isLightOn = false;
         let isPowerOut = false;
-        let currentHour = 0; // 0 = 12 AM
+        let currentHour = 0; 
         let gameTick = 0;
         let powerLevel = 100.0;
 
@@ -448,7 +391,6 @@
             }
         }
 
-        // ... Keep existing network and utility logic untouched
         function copyRoomLink() {
             navigator.clipboard.writeText(window.location.href);
             document.querySelector('.share-btn').innerText = "COPIED!";
@@ -466,7 +408,7 @@
         });
 
         // ==========================================
-        // RETRO AUDIO SYNTHESIS ENGINE
+        // RETRO AUDIO ENGINE
         // ==========================================
         function playPowerOutSound() {
             try {
@@ -484,36 +426,7 @@
                 gain.connect(audioCtx.destination);
                 osc.start(now);
                 osc.stop(now + 3.0);
-
-                const kick = audioCtx.createOscillator();
-                const kickGain = audioCtx.createGain();
-                kick.type = 'sine';
-                kick.frequency.setValueAtTime(80, now);
-                kick.frequency.exponentialRampToValueAtTime(0.01, now + 0.5);
-                kickGain.gain.setValueAtTime(0.8, now);
-                kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-                kick.connect(kickGain);
-                kickGain.connect(audioCtx.destination);
-                kick.start(now);
-                kick.stop(now + 0.5);
-
-                const bufferSize = audioCtx.sampleRate * 1.5; 
-                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-                const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) {
-                    data[i] = Math.random() * 2 - 1;
-                }
-                const noise = audioCtx.createBufferSource();
-                noise.buffer = buffer;
-                const noiseGain = audioCtx.createGain();
-                noiseGain.gain.setValueAtTime(0.12, now);
-                noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-                noise.connect(noiseGain);
-                noiseGain.connect(audioCtx.destination);
-                noise.start(now);
-                noise.stop(now + 1.5);
-
-            } catch (e) { console.error("Audio block:", e); }
+            } catch (e) {}
         }
 
         function playGeneratorStartSound() {
@@ -534,17 +447,6 @@
                 gain.connect(audioCtx.destination);
                 osc.start(now);
                 osc.stop(now + 2.0);
-
-                const clank = audioCtx.createOscillator();
-                const clankGain = audioCtx.createGain();
-                clank.type = 'triangle';
-                clank.frequency.setValueAtTime(180, now + 1.5);
-                clankGain.gain.setValueAtTime(0.5, now + 1.5);
-                clankGain.gain.exponentialRampToValueAtTime(0.001, now + 2.1);
-                clank.connect(clankGain);
-                clankGain.connect(audioCtx.destination);
-                clank.start(now + 1.5);
-                clank.stop(now + 2.1);
             } catch(e){}
         }
 
@@ -569,14 +471,12 @@
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const now = audioCtx.currentTime;
-
                 const chimeNotes = [
                     { f: 415.30, d: 0.6, t: 0.0 }, 
                     { f: 329.63, d: 0.6, t: 0.6 }, 
                     { f: 369.99, d: 0.6, t: 1.2 }, 
                     { f: 246.94, d: 1.2, t: 1.8 }  
                 ];
-
                 chimeNotes.forEach(note => {
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
@@ -590,49 +490,7 @@
                     osc.start(now + note.t);
                     osc.stop(now + note.t + note.d);
                 });
-
-                for (let i = 0; i < 6; i++) {
-                    const bellTime = 3.0 + (i * 1.4);
-                    [110, 220, 330].forEach(freq => {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.type = 'sine';
-                        osc.frequency.setValueAtTime(freq, now + bellTime);
-                        gain.gain.setValueAtTime(0, now + bellTime);
-                        gain.gain.linearRampToValueAtTime(0.35 / (freq/110), now + bellTime + 0.02);
-                        gain.gain.exponentialRampToValueAtTime(0.001, now + bellTime + 1.3);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start(now + bellTime);
-                        osc.stop(now + bellTime + 1.4);
-                    });
-                }
-
-                const fanfareTime = 11.5;
-                const fanfare = [
-                    { f: 523.25, d: 0.3, t: 0.0 }, 
-                    { f: 523.25, d: 0.3, t: 0.3 }, 
-                    { f: 523.25, d: 0.3, t: 0.6 }, 
-                    { f: 523.25, d: 0.6, t: 0.9 }, 
-                    { f: 466.16, d: 0.6, t: 1.5 }, 
-                    { f: 523.25, d: 1.4, t: 2.1 }  
-                ];
-
-                fanfare.forEach(note => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'square'; 
-                    osc.frequency.setValueAtTime(note.f, now + fanfareTime + note.t);
-                    gain.gain.setValueAtTime(0, now + fanfareTime + note.t);
-                    gain.gain.linearRampToValueAtTime(0.12, now + fanfareTime + note.t + 0.05);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + fanfareTime + note.t + note.d);
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start(now + fanfareTime + note.t);
-                    osc.stop(now + fanfareTime + note.t + note.d);
-                });
-
-            } catch (e) { console.error("Audio block:", e); }
+            } catch (e) {}
         }
 
         // ==========================================
@@ -717,12 +575,10 @@
             }
         }
 
-        // SCENARIO 1: BATTERY DRAIN (Pitch Black Screen Overlay, No Text)
         function triggerGameOverDeath() {
             gameActive = false;
             isPowerOut = true;
             triggerFlashlight(false);
-            
             playPowerOutSound();
 
             for (let slot in dataConnections) {
@@ -735,55 +591,28 @@
             document.getElementById('death-screen').style.display = 'block';
             document.getElementById('guard-hud').style.display = 'none';
             document.getElementById('monitor-container').style.display = 'none';
-            logSystem("FATAL: POWER DEPLETED");
         }
 
-        // SCENARIO 2: SABOTAGE (Repairable Circuit Breaker Outage)
+        // SABOTAGE OUTAGE (The power drops. Guard's screens go black!)
         function triggerSabotageOutage() {
             isPowerOut = true;
             triggerFlashlight(false);
-            
             playPowerOutSound();
 
-            for (let slot in dataConnections) {
-                const conn = dataConnections[slot];
-                if (conn && conn.open) {
-                    try { conn.send({ type: 'sabotage_outage' }); } catch(e){}
-                }
-            }
-
-            currentCamId = 'cam1';
-            camLabel.innerText = "CAM 01 (GEN ROOM)";
+            document.getElementById('main-monitor').style.display = "none";
+            document.getElementById('offline-screen').style.display = "flex";
+            document.getElementById('offline-screen').innerText = "SYSTEM OFFLINE\nGENERATOR COMPROMISED";
             
-            document.getElementById('power-out-screen').style.display = 'block';
             document.getElementById('toggle-monitor-btn').style.display = 'none';
             document.getElementById('flashlight-btn').style.display = 'none';
-            document.getElementById('repair-grid-btn').style.display = 'block';
 
-            connections = [];
-            draggingFrom = null;
-
-            updateMonitorFeed();
-            updateCameraMapUI();
-            logSystem("CRITICAL: GENERATOR OFFLINE");
+            logSystem("CRITICAL: GENERATOR DOWN. GET UP AND GO FIX CAM 1!");
         }
 
         function restorePower() {
             isPowerOut = false;
             powerLevel = 100.0; 
-            
             playGeneratorStartSound();
-
-            for (let slot in dataConnections) {
-                const conn = dataConnections[slot];
-                if (conn && conn.open) {
-                    try { conn.send({ type: 'powerrestored' }); } catch(e){}
-                }
-            }
-
-            document.getElementById('wire-minigame').style.display = 'none';
-            document.getElementById('repair-grid-btn').style.display = 'none';
-            document.getElementById('power-out-screen').style.display = 'none';
 
             document.getElementById('toggle-monitor-btn').style.display = 'block';
             document.getElementById('flashlight-btn').style.display = 'block';
@@ -798,7 +627,6 @@
         function triggerWin() {
             gameActive = false;
             triggerFlashlight(false);
-            
             playWinSound();
 
             for (let slot in dataConnections) {
@@ -827,12 +655,6 @@
                     updateCameraMapUI();
                     updateMonitorFeed();
                 });
-                call.on('close', () => {
-                    connectedStreams[targetSlot] = null;
-                    motionStates[targetSlot] = false; 
-                    updateCameraMapUI();
-                    updateMonitorFeed();
-                });
             });
 
             peer.on('connection', (conn) => {
@@ -847,62 +669,24 @@
                     }
                 });
                 conn.on('data', (data) => {
-                    if (data.type === 'motion') {
-                        motionStates[targetSlot] = data.state;
-                        updateCameraMapUI();
-                        updateMonitorFeed();
-                    }
                     if (data.type === 'sabotage') {
-                        logSystem("SABOTAGE DETECTED");
                         triggerSabotageOutage();
                     }
-                });
-                conn.on('close', () => {
-                    dataConnections[targetSlot] = null;
-                    motionStates[targetSlot] = false;
-                    updateCameraMapUI();
-                    updateMonitorFeed();
                 });
             });
         }
 
         // ==========================================
-        // CAMERA / ANIMATRONIC MODE
+        // CAMERA DEVICE MODE (CAM 1 is the Generator)
         // ==========================================
         async function initCameraMode() {
             myRole = 'cam';
             document.getElementById('slot-status').innerText = "PROBING LENSES...";
             
             try {
-                let tempStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(d => d.kind === 'videoinput');
-                tempStream.getTracks().forEach(t => t.stop());
-
-                let foundFlashStream = null;
-                for (const device of videoDevices) {
-                    try {
-                        const testStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: device.deviceId } } });
-                        const testTrack = testStream.getVideoTracks()[0];
-                        await new Promise(resolve => setTimeout(resolve, 250));
-                        const capabilities = typeof testTrack.getCapabilities === 'function' ? testTrack.getCapabilities() : null;
-
-                        if (capabilities && capabilities.torch) {
-                            foundFlashStream = testStream;
-                            break; 
-                        } else {
-                            testTrack.stop();
-                        }
-                    } catch (e) {}
-                }
-
-                if (foundFlashStream) {
-                    localCameraStream = foundFlashStream;
-                } else {
-                    localCameraStream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false
-                    });
-                }
+                localCameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false
+                });
                 tryRegisterCamSlot(1);
             } catch (err) {
                 document.getElementById('slot-status').innerText = "CAMERA BLOCKED";
@@ -922,12 +706,12 @@
 
             peer.on('open', (id) => {
                 if (slotNum === 1) {
-                    document.getElementById('slot-status').innerText = `GEN ROOM ANIMATRONIC`;
+                    document.getElementById('slot-status').innerText = `GEN ROOM (CAM 1)`;
                     document.getElementById('cam-controls').style.display = "block";
-                    camLabel.innerText = `CAM 01 (GEN ROOM) - RECORDING`;
+                    camLabel.innerText = `CAM 01 (GEN ROOM) - ONLINE`;
                 } else {
                     document.getElementById('slot-status').innerText = `BROADCASTING`;
-                    camLabel.innerText = `CAM 0${slotNum} - RECORDING`;
+                    camLabel.innerText = `CAM 0${slotNum} - ONLINE`;
                 }
                 
                 document.getElementById('system-log').style.display = 'none';
@@ -944,7 +728,6 @@
                 });
 
                 camConnectToGuard();
-                initMotionDetection(); 
             });
 
             peer.on('error', (err) => {
@@ -963,7 +746,6 @@
             const conn = peer.connect(guardId);
             conn.on('open', () => {
                 guardDataConnection = conn;
-                sendMotionStateToGuard(isCurrentlyMoving);
             });
 
             conn.on('data', (data) => {
@@ -972,28 +754,30 @@
                 }
                 if (data.type === 'sabotage_outage') {
                     playPowerOutSound();
-                    document.getElementById('monitor-container').style.opacity = '0.1'; 
-                    document.getElementById('recording-dot').style.display = 'none';
-                    camLabel.innerText = "SYSTEM SHUTDOWN - GENERATOR FAILURE";
+                    
+                    // IF WE ARE THE CAM 1 DEVICE: Open up the physical repair wire board overlay!
+                    if (currentSlot === 1) {
+                        openPhysicalGeneratorRepair();
+                    } else {
+                        document.getElementById('monitor-container').style.opacity = '0.1'; 
+                        camLabel.innerText = "SYSTEM SHUTDOWN - GENERATOR FAILURE";
+                    }
                 }
-                // When Guard's battery dies, cameras instantly black out too
                 if (data.type === 'gameover_death') {
                     playPowerOutSound();
                     document.getElementById('death-screen').style.display = 'block';
                     document.getElementById('monitor-container').style.display = 'none';
-                    document.getElementById('recording-dot').style.display = 'none';
                     document.getElementById('cam-controls').style.display = 'none';
+                    document.getElementById('generator-repair-overlay').style.display = 'none';
                 }
                 if (data.type === 'powerrestored') {
                     playGeneratorStartSound();
                     document.getElementById('monitor-container').style.opacity = '1';
-                    document.getElementById('recording-dot').style.display = 'block';
-                    camLabel.innerText = currentSlot === 1 ? `CAM 01 (GEN ROOM) - RECORDING` : `CAM 0${currentSlot} - RECORDING`;
+                    camLabel.innerText = currentSlot === 1 ? `CAM 01 (GEN ROOM) - ONLINE` : `CAM 0${currentSlot} - ONLINE`;
                 }
                 if (data.type === 'win') {
                     playWinSound();
                     document.getElementById('monitor-container').style.opacity = '1';
-                    document.getElementById('motion-static-overlay').style.display = 'none';
                     camLabel.innerText = "6 AM - CONGRATULATIONS!";
                 }
             });
@@ -1002,6 +786,7 @@
             guardMediaCall = peer.call(guardId, localCameraStream);
         }
 
+        // Animatronic triggers sabotage from CAM 1 screen
         function triggerSabotage() {
             const btn = document.getElementById('sabotage-btn');
             btn.disabled = true;
@@ -1011,71 +796,42 @@
                 guardDataConnection.send({ type: 'sabotage' });
             }
             playPowerOutSound();
+            openPhysicalGeneratorRepair();
         }
 
-        // ==========================================
-        // MOTION DETECTION
-        // ==========================================
-        function initMotionDetection() {
-            motionCanvas = document.createElement('canvas');
-            motionCanvas.width = 48;  
-            motionCanvas.height = 36;
-            motionCtx = motionCanvas.getContext('2d');
-            setInterval(analyzeCameraMovementFrame, 150);
+        // Open the wire puzzle overlay physically on CAM 1
+        function openPhysicalGeneratorRepair() {
+            document.getElementById('generator-repair-overlay').style.display = 'flex';
+            
+            const canvas = document.getElementById('wire-canvas');
+            canvas.width = 320;
+            canvas.height = 400;
+
+            connections = [];
+            draggingFrom = null;
+            rightColors = shuffle([...leftColors]);
+            
+            drawWirePuzzle();
         }
 
-        function analyzeCameraMovementFrame() {
-            if (!localCameraStream || !mainMonitor || mainMonitor.paused || mainMonitor.ended) return;
-            if (Date.now() < ignoreMotionUntil) { prevFrameData = null; return; }
+        // Called when Guard physically finishes the wires on CAM 1
+        function completePhysicalGeneratorRepair() {
+            document.getElementById('generator-repair-overlay').style.display = 'none';
+            playGeneratorStartSound();
 
-            try {
-                motionCtx.drawImage(mainMonitor, 0, 0, motionCanvas.width, motionCanvas.height);
-                const currentFrame = motionCtx.getImageData(0, 0, motionCanvas.width, motionCanvas.height);
-                const data = currentFrame.data;
+            const btn = document.getElementById('sabotage-btn');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "⚡ SABOTAGE GENERATOR (1/1)";
+            }
 
-                if (prevFrameData) {
-                    let changedPixels = 0;
-                    const totalPixels = motionCanvas.width * motionCanvas.height;
-
-                    for (let i = 0; i < data.length; i += 4) {
-                        const r1 = data[i], g1 = data[i+1], b1 = data[i+2];
-                        const r2 = prevFrameData[i], g2 = prevFrameData[i+1], b2 = prevFrameData[i+2];
-
-                        const bright1 = (r1 + g1 + b1) / 3;
-                        const bright2 = (r2 + g2 + b2) / 3;
-
-                        if (Math.abs(bright1 - bright2) > 22) changedPixels++;
-                    }
-
-                    if ((changedPixels / totalPixels) > 0.05) triggerMotionState(true);
-                    else triggerMotionState(false);
-                }
-                prevFrameData = new Uint8ClampedArray(data); 
-            } catch (e) {}
-        }
-
-        function triggerMotionState(movingNow) {
-            if (movingNow) {
-                if (motionTimeout) { clearTimeout(motionTimeout); motionTimeout = null; }
-                if (!isCurrentlyMoving) {
-                    isCurrentlyMoving = true;
-                    sendMotionStateToGuard(true);
-                    document.getElementById('motion-alert-banner').style.display = 'block';
-                }
-            } else {
-                if (isCurrentlyMoving && !motionTimeout) {
-                    motionTimeout = setTimeout(() => {
-                        isCurrentlyMoving = false;
-                        sendMotionStateToGuard(false);
-                        document.getElementById('motion-alert-banner').style.display = 'none';
-                        motionTimeout = null;
-                    }, 1500); 
-                }
+            if (guardDataConnection && guardDataConnection.open) {
+                guardDataConnection.send({ type: 'powerrestored' });
             }
         }
 
         // ==========================================
-        // WIRE REPAIR MINIGAME ENGINE
+        // WIRE REPAIR PUZZLE CODE
         // ==========================================
         let rightColors = [];
         let connections = [];
@@ -1084,7 +840,7 @@
         
         const leftX = 40;
         const leftY = [80, 160, 240, 320];
-        const rightX = 260;
+        const rightX = 280;
         const rightY = [80, 160, 240, 320];
         const leftColors = ['#ff3333', '#3333ff', '#ffff33', '#33ff33']; 
 
@@ -1098,31 +854,17 @@
             return array;
         }
 
-        function openWirePuzzle() {
-            if (connections.length === 0 && draggingFrom === null) {
-                rightColors = shuffle([...leftColors]);
-            }
-            
-            document.getElementById('wire-minigame').style.display = 'flex';
-            
-            const canvas = document.getElementById('wire-canvas');
-            canvas.width = 300;
-            canvas.height = 400;
-            
-            drawWirePuzzle();
-        }
-
         function drawWirePuzzle() {
             const canvas = document.getElementById('wire-canvas');
             const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, 300, 400);
+            ctx.clearRect(0, 0, 320, 400);
 
             if (draggingFrom !== null) {
                 ctx.beginPath();
                 ctx.moveTo(leftX, leftY[draggingFrom]);
                 ctx.lineTo(curX, curY);
                 ctx.strokeStyle = leftColors[draggingFrom];
-                ctx.lineWidth = 6;
+                ctx.lineWidth = 8;
                 ctx.lineCap = 'round';
                 ctx.stroke();
             }
@@ -1132,37 +874,39 @@
                 ctx.moveTo(leftX, leftY[conn.leftIdx]);
                 ctx.bezierCurveTo(leftX + 80, leftY[conn.leftIdx], rightX - 80, rightY[conn.rightIdx], rightX, rightY[conn.rightIdx]);
                 ctx.strokeStyle = leftColors[conn.leftIdx];
-                ctx.lineWidth = 6;
+                ctx.lineWidth = 8;
                 ctx.lineCap = 'round';
                 ctx.stroke();
             });
 
+            // Draw left terminals
             for (let i = 0; i < 4; i++) {
                 ctx.beginPath();
-                ctx.arc(leftX, leftY[i], 12, 0, Math.PI * 2);
+                ctx.arc(leftX, leftY[i], 15, 0, Math.PI * 2);
                 ctx.fillStyle = leftColors[i];
                 ctx.fill();
                 ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 3;
                 ctx.stroke();
 
                 ctx.beginPath();
-                ctx.arc(leftX, leftY[i], 4, 0, Math.PI * 2);
+                ctx.arc(leftX, leftY[i], 5, 0, Math.PI * 2);
                 ctx.fillStyle = '#111';
                 ctx.fill();
             }
 
+            // Draw right terminals
             for (let i = 0; i < 4; i++) {
                 ctx.beginPath();
-                ctx.arc(rightX, rightY[i], 12, 0, Math.PI * 2);
+                ctx.arc(rightX, rightY[i], 15, 0, Math.PI * 2);
                 ctx.fillStyle = rightColors[i];
                 ctx.fill();
                 ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 3;
                 ctx.stroke();
 
                 ctx.beginPath();
-                ctx.arc(rightX, rightY[i], 4, 0, Math.PI * 2);
+                ctx.arc(rightX, rightY[i], 5, 0, Math.PI * 2);
                 ctx.fillStyle = '#111';
                 ctx.fill();
             }
@@ -1174,19 +918,18 @@
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             
-            const x = (clientX - rect.left) * (300 / rect.width);
+            const x = (clientX - rect.left) * (320 / rect.width);
             const y = (clientY - rect.top) * (400 / rect.height);
             return { x, y };
         }
 
         function onPuzzleStart(e) {
-            if (!isPowerOut) return;
             const coords = getPuzzleCoords(e);
             
             for (let i = 0; i < 4; i++) {
                 const dy = coords.y - leftY[i];
                 const dx = coords.x - leftX;
-                if (Math.sqrt(dx*dx + dy*dy) < 25) {
+                if (Math.sqrt(dx*dx + dy*dy) < 30) {
                     if (connections.some(c => c.leftIdx === i)) continue;
                     draggingFrom = i;
                     curX = coords.x;
@@ -1212,7 +955,7 @@
             for (let i = 0; i < 4; i++) {
                 const dy = curY - rightY[i];
                 const dx = curX - rightX;
-                if (Math.sqrt(dx*dx + dy*dy) < 25) {
+                if (Math.sqrt(dx*dx + dy*dy) < 30) {
                     if (leftColors[draggingFrom] === rightColors[i]) {
                         if (!connections.some(c => c.rightIdx === i)) {
                             connections.push({ leftIdx: draggingFrom, rightIdx: i });
@@ -1226,7 +969,7 @@
             drawWirePuzzle();
 
             if (connections.length === 4) {
-                setTimeout(restorePower, 300);
+                setTimeout(completePhysicalGeneratorRepair, 400);
             }
         }
 
@@ -1238,7 +981,6 @@
         boardEl.addEventListener('touchstart', onPuzzleStart, { passive: false });
         boardEl.addEventListener('touchmove', onPuzzleMove, { passive: false });
         window.addEventListener('touchend', onPuzzleEnd);
-
 
         // ==========================================
         // MOTORIZED PANNING SYSTEM
@@ -1268,7 +1010,7 @@
         panAnimateLoop();
 
         // ==========================================
-        // UTILITIES & RENDER
+        // UTILITIES & RENDERING
         // ==========================================
         function getSlotFromPeerId(peerId) {
             const index = peerId.lastIndexOf('-cam-');
@@ -1276,33 +1018,15 @@
             return 'cam' + peerId.substring(index + 5); 
         }
 
-        function sendMotionStateToGuard(active) {
-            if (guardDataConnection && guardDataConnection.open) guardDataConnection.send({ type: 'motion', state: active });
-        }
-
         function updateMonitorFeed() {
             if (myRole !== 'guard') return; 
 
             if (isPowerOut) {
-                if (currentCamId === 'cam1' && connectedStreams['cam1']) {
-                    mainMonitor.srcObject = connectedStreams['cam1'];
-                    mainMonitor.style.display = "block";
-                    offlineScreen.style.display = "none";
-                    mainMonitor.style.filter = "grayscale(100%) contrast(180%) brightness(18%) sepia(80%) hue-rotate(80deg)";
-                } else {
-                    mainMonitor.srcObject = null;
-                    mainMonitor.style.display = "none";
-                    offlineScreen.style.display = "flex";
-                    offlineScreen.innerText = "NO SIGNAL\nGRID SHUTDOWN";
-                }
-                motionStaticOverlay.style.display = "none";
+                mainMonitor.srcObject = null;
+                mainMonitor.style.display = "none";
+                offlineScreen.style.display = "flex";
+                offlineScreen.innerText = "SYSTEM OFFLINE\nGENERATOR COMPROMISED";
                 return;
-            }
-
-            if (motionStates[currentCamId]) {
-                motionStaticOverlay.style.display = "block";
-            } else {
-                motionStaticOverlay.style.display = "none";
             }
 
             if (connectedStreams[currentCamId]) {
@@ -1312,7 +1036,6 @@
             } else {
                 mainMonitor.srcObject = null;
                 mainMonitor.style.display = "none";
-                motionStaticOverlay.style.display = "none";
                 offlineScreen.style.display = "flex";
                 offlineScreen.innerText = "SYSTEM OFFLINE";
             }
@@ -1325,17 +1048,10 @@
                 if (!btn) continue;
                 
                 if (isPowerOut) {
-                    if (slotKey === 'cam1') {
-                        btn.classList.add('online');
-                        btn.style.color = "#ff2222"; btn.style.borderColor = "#ff2222"; btn.innerText = "CAM 01 (EMERGENCY)";
-                        btn.disabled = false;
-                        btn.style.opacity = "1";
-                    } else {
-                        btn.classList.remove('online');
-                        btn.style.color = "#444"; btn.style.borderColor = "#222"; btn.innerText = `CAM 0${i} (OFF)`;
-                        btn.disabled = true;
-                        btn.style.opacity = "0.3";
-                    }
+                    btn.classList.remove('online');
+                    btn.style.color = "#444"; btn.style.borderColor = "#222"; btn.innerText = `CAM 0${i} (OFF)`;
+                    btn.disabled = true;
+                    btn.style.opacity = "0.3";
                     continue;
                 }
 
@@ -1343,14 +1059,10 @@
                 btn.style.opacity = "1";
                 if (connectedStreams[slotKey] || dataConnections[slotKey]) {
                     btn.classList.add('online');
-                    if (motionStates[slotKey]) {
-                        btn.style.color = "#ff2222"; btn.style.borderColor = "#ff2222"; btn.innerText = `CAM 0${i} (WARN)`;
-                    } else {
-                        btn.style.color = ""; btn.style.borderColor = ""; btn.innerText = i === 1 ? "CAM 01 (GEN ROOM)" : `CAM 0${i}`;
-                    }
+                    btn.innerText = i === 1 ? "CAM 01 (GEN ROOM)" : `CAM 0${i}`;
                 } else {
                     btn.classList.remove('online');
-                    btn.style.color = ""; btn.style.borderColor = ""; btn.innerText = `CAM 0${i} (OFF)`;
+                    btn.innerText = `CAM 0${i} (OFF)`;
                 }
             }
         }
@@ -1373,7 +1085,6 @@
             const track = stream.getVideoTracks()[0];
             if (!track) return;
 
-            ignoreMotionUntil = Date.now() + 1200;
             try {
                 const caps = typeof track.getCapabilities === 'function' ? track.getCapabilities() : null;
                 if (caps && caps.torch) await track.applyConstraints({ advanced: [{ torch: turnOn }] });
