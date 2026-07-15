@@ -256,7 +256,7 @@
 
         #win-screen {
             position: absolute; top:0; left:0; width:100%; height:100%;
-            background: #00; color: white; display: flex; flex-direction: column;
+            background: #000; color: white; display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 250;
             font-size: 7rem; letter-spacing: 5px; font-weight: bold; text-shadow: 0 0 20px #fff;
             display: none; opacity: 0; transition: opacity 3s;
@@ -487,74 +487,171 @@
             } catch (e) {}
         }
 
-        // Expanded 32-note creepy music box sequence (Classic Toreador theme variation)
+        // 64-Note Corrupted Music Box Sequence with Wow/Flutter, Jitter, and Sub-Drone (Runs exactly 2 times)
         let creepyTuneInterval = null;
+        let creepyAudioCtx = null;
         function playCreepyTune() {
             try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // Detailed 32-note progression
+                creepyAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = creepyAudioCtx.currentTime;
+
+                // --- 1. THE MONSTROUS COLD SUB-DRONE ---
+                const droneOsc = creepyAudioCtx.createOscillator();
+                const droneFilter = creepyAudioCtx.createBiquadFilter();
+                const droneGain = creepyAudioCtx.createGain();
+
+                droneOsc.type = 'sawtooth';
+                droneOsc.frequency.setValueAtTime(55.00, now); // Deep Bass A1
+
+                // Drone Pitch LFO (sub-harmonic dynamic wobble)
+                const droneLfo = creepyAudioCtx.createOscillator();
+                const droneLfoGain = creepyAudioCtx.createGain();
+                droneLfo.frequency.setValueAtTime(0.4, now); // Very slow 0.4Hz wave
+                droneLfoGain.gain.setValueAtTime(2.0, now);
+                droneLfo.connect(droneLfoGain);
+                droneLfoGain.connect(droneOsc.frequency);
+                droneLfo.start(now);
+
+                droneFilter.type = 'lowpass';
+                droneFilter.Q.setValueAtTime(7, now);
+                droneFilter.frequency.setValueAtTime(140, now);
+
+                // Sweeping filter (the "breathing" sensation)
+                const filterLfo = creepyAudioCtx.createOscillator();
+                const filterLfoGain = creepyAudioCtx.createGain();
+                filterLfo.frequency.setValueAtTime(0.15, now); // Dynamic movement over 6+ seconds
+                filterLfoGain.gain.setValueAtTime(70, now);
+                filterLfo.connect(filterLfoGain);
+                filterLfoGain.connect(droneFilter.frequency);
+                filterLfo.start(now);
+
+                droneGain.gain.setValueAtTime(0.14, now);
+
+                droneOsc.connect(droneFilter);
+                droneFilter.connect(droneGain);
+                droneGain.connect(creepyAudioCtx.destination);
+                droneOsc.start(now);
+
+                // --- 2. 64-NOTE BROKEN TOREADOR SCALE ---
                 const melody = [
+                    // Act I: Slower, deeply flat intro of Freddy's theme
                     392.00, 349.23, 392.00, 293.66, 466.16, 440.00, 392.00, 349.23, 
                     392.00, 293.66, 466.16, 440.00, 392.00, 0,      392.00, 440.00, 
-                    466.16, 523.25, 587.33, 466.16, 392.00, 349.23, 392.00, 293.66, 
-                    466.16, 440.00, 392.00, 349.23, 329.63, 293.66, 220.00, 0
+                    // Act II: Melancholic deterioration (creeping flat-5ths / tritones)
+                    466.16, 523.25, 554.37, 466.16, 392.00, 311.13, 392.00, 277.18, 
+                    415.30, 440.00, 369.99, 349.23, 311.13, 293.66, 220.00, 0,
+                    // Act III: Shifting an octave higher, piercing like a dusty, abandoned nursery toy
+                    783.99, 698.46, 783.99, 587.33, 932.33, 880.00, 783.99, 698.46,
+                    783.99, 587.33, 932.33, 880.00, 783.99, 0,      880.00, 932.33,
+                    // Act IV: Pitch starts "melting" severely, sliding into complete structural breakdown
+                    1046.50, 987.77, 880.00, 739.99, 622.25, 523.25, 415.30, 311.13,
+                    293.66, 277.18, 233.08, 196.00, 146.83, 110.00, 73.42, 0
                 ];
-                
-                let time = audioCtx.currentTime;
-                const noteDuration = 0.48; // Tempo rhythm speed
-                
+
+                let noteTime = now;
+                const baseTempo = 0.58; // Hauntingly slow tempo pace
+                let playCount = 0; // Tracks sequence loop count
+
                 function playSequence() {
+                    if (playCount >= 2) return;
+
+                    playCount++;
+                    const sequenceStartTime = noteTime; 
+
                     melody.forEach((freq) => {
                         if (freq > 0) {
-                            // Detuned analog wobble simulating a winding clockwork device
-                            const detune = (Math.random() - 0.5) * 4.0; 
-                            
-                            const osc = audioCtx.createOscillator();
-                            const gain = audioCtx.createGain();
-                            
-                            osc.type = 'sine'; 
-                            osc.frequency.setValueAtTime(freq + detune, time);
-                            
-                            // High tinny overtone bell effect
-                            const chime = audioCtx.createOscillator();
-                            const chimeGain = audioCtx.createGain();
-                            chime.type = 'sine';
-                            chime.frequency.setValueAtTime((freq * 2) + detune, time);
-                            
-                            gain.gain.setValueAtTime(0, time);
-                            gain.gain.linearRampToValueAtTime(0.12, time + 0.01); 
-                            gain.gain.exponentialRampToValueAtTime(0.001, time + 1.2); 
-                            
-                            chimeGain.gain.setValueAtTime(0, time);
-                            chimeGain.gain.linearRampToValueAtTime(0.03, time + 0.005); 
-                            chimeGain.gain.exponentialRampToValueAtTime(0.001, time + 0.35); 
+                            // Organic Wow & Flutter (subtle random pitch error per striking)
+                            const mechanicalDetune = (Math.random() - 0.5) * 5.5; 
 
+                            // Primary Bell Node
+                            const osc = creepyAudioCtx.createOscillator();
+                            const gain = creepyAudioCtx.createGain();
+                            
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(freq + mechanicalDetune, noteTime);
+                            
+                            // "MELTING" GLIDE: Pitch falls flat (about 5% drop) over the note decay
+                            const slideTarget = (freq + mechanicalDetune) * 0.95;
+                            osc.frequency.exponentialRampToValueAtTime(slideTarget, noteTime + 1.8);
+
+                            // Harsh Metallic Overtone (Triangle wave on non-harmonic ratios)
+                            const chime = creepyAudioCtx.createOscillator();
+                            const chimeGain = creepyAudioCtx.createGain();
+                            chime.type = 'triangle';
+                            chime.frequency.setValueAtTime((freq * 2.502) + mechanicalDetune, noteTime);
+                            chime.frequency.exponentialRampToValueAtTime(slideTarget * 2.502, noteTime + 0.8);
+
+                            // Envelope curves (long, ghostly reverberating tails)
+                            gain.gain.setValueAtTime(0, noteTime);
+                            gain.gain.linearRampToValueAtTime(0.12, noteTime + 0.02); // Bell strike onset
+                            gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 2.0);
+
+                            chimeGain.gain.setValueAtTime(0, noteTime);
+                            chimeGain.gain.linearRampToValueAtTime(0.04, noteTime + 0.01);
+                            chimeGain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.6);
+
+                            // Fake Hallway Echo Loop
+                            const echoGain = creepyAudioCtx.createGain();
+                            echoGain.gain.setValueAtTime(0, noteTime);
+                            echoGain.gain.setValueAtTime(0.06, noteTime + 0.32); // Delayed slapback echo
+                            echoGain.gain.exponentialRampToValueAtTime(0.001, noteTime + 1.4);
+
+                            // Connect networks
                             osc.connect(gain);
-                            gain.connect(audioCtx.destination);
+                            gain.connect(creepyAudioCtx.destination);
                             
                             chime.connect(chimeGain);
-                            chimeGain.connect(audioCtx.destination);
+                            chimeGain.connect(creepyAudioCtx.destination);
+
+                            osc.connect(echoGain);
+                            echoGain.connect(creepyAudioCtx.destination);
                             
-                            osc.start(time);
-                            osc.stop(time + 1.3);
-                            chime.start(time);
-                            chime.stop(time + 0.5);
+                            osc.start(noteTime);
+                            osc.stop(noteTime + 2.2);
+                            
+                            chime.start(noteTime);
+                            chime.stop(noteTime + 1.1);
                         }
-                        time += noteDuration;
+
+                        // JITTER: Slips the gears up randomly to simulate unstable spring teeth
+                        const gearSlip = (Math.random() - 0.5) * 0.045;
+                        noteTime += (baseTempo + gearSlip);
                     });
+
+                    // If this was the 2nd and final play, kill the looping engine and fade out the drone
+                    if (playCount === 2) {
+                        if (creepyTuneInterval) {
+                            clearInterval(creepyTuneInterval);
+                            creepyTuneInterval = null;
+                        }
+
+                        // Slowly fade the sub-drone out over the course of the final sequence
+                        droneGain.gain.setValueAtTime(0.14, sequenceStartTime);
+                        droneGain.gain.exponentialRampToValueAtTime(0.001, noteTime);
+
+                        // Hard stop the oscillators to release browser resources after decay finishes
+                        const finalPlayDuration = noteTime - sequenceStartTime;
+                        setTimeout(() => {
+                            try {
+                                droneOsc.stop();
+                                droneLfo.stop();
+                                filterLfo.stop();
+                            } catch(e){}
+                        }, finalPlayDuration * 1000);
+                    }
                 }
-                
+
+                // Play first time immediately
                 playSequence();
-                
-                // Loops perfectly based on actual dynamic count of notes
+
+                // Dynamic loop strictly scheduled for the second and final run
                 creepyTuneInterval = setInterval(() => {
-                    time = audioCtx.currentTime;
+                    noteTime = creepyAudioCtx.currentTime;
                     playSequence();
-                }, melody.length * noteDuration * 1000);
-                
+                }, melody.length * baseTempo * 1000);
+
             } catch (e) {
-                console.error("Music synthesis failed:", e);
+                console.error("Critical Audio Synthesizer Defect:", e);
             }
         }
 
@@ -683,7 +780,7 @@
             isPowerOut = true;
             triggerFlashlight(false);
             
-            // Power runs out: Trigger the expanded music box loop
+            // Power runs out: Trigger the expanded music box loop (capped at 2 times)
             playCreepyTune();
 
             for (let slot in dataConnections) {
@@ -723,7 +820,16 @@
             isPowerOut = false;
             powerLevel = 100.0; 
             
-            if (creepyTuneInterval) clearInterval(creepyTuneInterval);
+            // Safe teardown of horror engine contexts
+            if (creepyTuneInterval) {
+                clearInterval(creepyTuneInterval);
+                creepyTuneInterval = null;
+            }
+            if (creepyAudioCtx) {
+                try { creepyAudioCtx.close(); } catch(e){}
+                creepyAudioCtx = null;
+            }
+
             playGeneratorStartSound();
 
             document.getElementById('guard-hud').style.display = 'block';
@@ -744,7 +850,15 @@
         function triggerWin() {
             gameActive = false;
             triggerFlashlight(false);
-            if (creepyTuneInterval) clearInterval(creepyTuneInterval);
+            
+            if (creepyTuneInterval) {
+                clearInterval(creepyTuneInterval);
+                creepyTuneInterval = null;
+            }
+            if (creepyAudioCtx) {
+                try { creepyAudioCtx.close(); } catch(e){}
+                creepyAudioCtx = null;
+            }
 
             for (let slot in dataConnections) {
                 const conn = dataConnections[slot];
@@ -861,60 +975,6 @@
             setTimeout(checkMotionLoop, 150); 
         }
 
-        async function tryRegisterCamSlot(slotNum) {
-            if (slotNum > 4) {
-                document.getElementById('slot-status').innerText = "ROOM FULL";
-                return;
-            }
-
-            currentSlot = slotNum;
-            if (peer) { try { peer.destroy(); } catch(e){} }
-
-            peer = new Peer(`${roomHash}-cam-${slotNum}`);
-
-            peer.on('open', async (id) => {
-                const statusEl = document.getElementById('slot-status');
-                statusEl.innerText = "INITIALIZING CAMERA...";
-                
-                const success = await acquireCameraStream(slotNum);
-                if (!success) {
-                    statusEl.innerText = "CAMERA ERROR";
-                    return;
-                }
-
-                if (slotNum === 1) {
-                    document.getElementById('slot-status').innerText = `GEN ROOM (CAM 1)`;
-                    document.getElementById('cam-controls').style.display = "block";
-                    camLabel.innerText = `CAM 01 (GEN ROOM) - ONLINE`;
-                } else {
-                    document.getElementById('slot-status').innerText = `BROADCASTING`;
-                    camLabel.innerText = `CAM 0${slotNum} - ONLINE`;
-                }
-                
-                document.getElementById('recording-dot').style.display = 'block';
-                
-                mainMonitor.srcObject = localCameraStream;
-                mainMonitor.style.display = "block";
-                offlineScreen.style.display = "none";
-
-                requestWakeLock(); 
-                checkMotionLoop(); 
-
-                peer.on('error', (err) => {
-                    if (err.type === 'peer-unavailable') setTimeout(camConnectToGuard, 4000);
-                });
-
-                camConnectToGuard();
-            });
-
-            peer.on('error', (err) => {
-                if (err.type === 'unavailable-id') {
-                    peer.destroy();
-                    setTimeout(() => { tryRegisterCamSlot(slotNum + 1); }, 600);
-                }
-            });
-        }
-
         async function acquireCameraStream(slotNum) {
             const statusEl = document.getElementById('slot-status');
             
@@ -985,6 +1045,60 @@
             }
         }
 
+        async function tryRegisterCamSlot(slotNum) {
+            if (slotNum > 4) {
+                document.getElementById('slot-status').innerText = "ROOM FULL";
+                return;
+            }
+
+            currentSlot = slotNum;
+            if (peer) { try { peer.destroy(); } catch(e){} }
+
+            peer = new Peer(`${roomHash}-cam-${slotNum}`);
+
+            peer.on('open', async (id) => {
+                const statusEl = document.getElementById('slot-status');
+                statusEl.innerText = "INITIALIZING CAMERA...";
+                
+                const success = await acquireCameraStream(slotNum);
+                if (!success) {
+                    statusEl.innerText = "CAMERA ERROR";
+                    return;
+                }
+
+                if (slotNum === 1) {
+                    document.getElementById('slot-status').innerText = `GEN ROOM (CAM 1)`;
+                    document.getElementById('cam-controls').style.display = "block";
+                    camLabel.innerText = `CAM 01 (GEN ROOM) - ONLINE`;
+                } else {
+                    document.getElementById('slot-status').innerText = `BROADCASTING`;
+                    camLabel.innerText = `CAM 0${slotNum} - ONLINE`;
+                }
+                
+                document.getElementById('recording-dot').style.display = 'block';
+                
+                mainMonitor.srcObject = localCameraStream;
+                mainMonitor.style.display = "block";
+                offlineScreen.style.display = "none";
+
+                requestWakeLock(); 
+                checkMotionLoop(); 
+
+                peer.on('error', (err) => {
+                    if (err.type === 'peer-unavailable') setTimeout(camConnectToGuard, 4000);
+                });
+
+                camConnectToGuard();
+            });
+
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') {
+                    peer.destroy();
+                    setTimeout(() => { tryRegisterCamSlot(slotNum + 1); }, 600);
+                }
+            });
+        }
+
         function camConnectToGuard() {
             const guardId = `${roomHash}-guard`;
             if (guardDataConnection) { try { guardDataConnection.close(); } catch(e){} }
@@ -1011,7 +1125,7 @@
                     }
                 }
                 if (data.type === 'gameover_death') {
-                    // Total power loss plays the extended creepy tune
+                    // Total power loss plays the extended creepy tune (capped at 2 times)
                     playCreepyTune();
                     document.getElementById('death-screen').style.display = 'block';
                     document.getElementById('monitor-container').style.display = 'none';
@@ -1019,7 +1133,15 @@
                     document.getElementById('generator-repair-overlay').style.display = 'none';
                 }
                 if (data.type === 'powerrestored') {
-                    if (creepyTuneInterval) clearInterval(creepyTuneInterval);
+                    if (creepyTuneInterval) {
+                        clearInterval(creepyTuneInterval);
+                        creepyTuneInterval = null;
+                    }
+                    if (creepyAudioCtx) {
+                        try { creepyAudioCtx.close(); } catch(e){}
+                        creepyAudioCtx = null;
+                    }
+                    
                     playGeneratorStartSound();
                     document.getElementById('monitor-container').style.opacity = '1';
                     
@@ -1107,7 +1229,6 @@
             return array;
         }
 
-        // ... Wire puzzle math remains unchanged ...
         function drawWirePuzzle() {
             const canvas = document.getElementById('wire-canvas');
             const ctx = canvas.getContext('2d');
@@ -1391,7 +1512,12 @@
             }
         });
 
-        window.addEventListener('beforeunload', () => { if (peer) peer.destroy(); });
+        window.addEventListener('beforeunload', () => { 
+            if (peer) peer.destroy(); 
+            if (creepyAudioCtx) {
+                try { creepyAudioCtx.close(); } catch(e){}
+            }
+        });
         window.onload = tryBecomeGuard;
     </script>
 </body>
