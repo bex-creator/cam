@@ -65,7 +65,7 @@
             transition: opacity 0.3s;
         }
 
-        /* Video Feed - CLEANED: Creepy horror filters removed! */
+        /* Video Feed */
         #main-monitor {
             position: absolute;
             width: 100%;
@@ -125,7 +125,7 @@
             pointer-events: none; z-index: 5;
         }
 
-        /* TV Snow Static Effect (Triggered on motion) */
+        /* TV Snow Static Effect */
         #camera-static {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -449,7 +449,7 @@
         function playStaticSound() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const bufferSize = audioCtx.sampleRate * 0.3; // 0.3 seconds of white noise
+                const bufferSize = audioCtx.sampleRate * 0.3; 
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
                 const data = buffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) {
@@ -466,11 +466,10 @@
             } catch(e) {}
         }
 
-        // Triggered by camera switch or motion
         let motionStaticTimeout = null;
         function triggerVisualStatic(duration = 250) {
             if (cameraStatic) {
-                cameraStatic.style.opacity = "0.8"; // Show heavy snow
+                cameraStatic.style.opacity = "0.8"; 
                 clearTimeout(motionStaticTimeout);
                 motionStaticTimeout = setTimeout(() => { 
                     cameraStatic.style.opacity = "0"; 
@@ -751,7 +750,6 @@
                     if (data.type === 'powerrestored') {
                         restorePower();
                     }
-                    // MOTION DETECTED: If motion is on the active camera, blast the static snow!
                     if (data.type === 'motion' && isMonitorUp && !isPowerOut) {
                         if (targetSlot === currentCamId) {
                             triggerVisualStatic(400); 
@@ -769,75 +767,11 @@
         let lastImageData = null;
         let lastMotionSentTime = 0;
 
-        // RESTORED: Smart lens loop scans each camera individually to guarantee physical flashlight capability!
         async function initCameraMode() {
             myRole = 'cam';
-            const statusEl = document.getElementById('slot-status');
-            statusEl.innerText = "PROBING LENSES...";
-            logSystem("INITIATING CAMERA HARDWARE SWEEP...");
-            
-            try {
-                // 1. Get initial generic permission so we can read device IDs and labels
-                const tempStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }, audio: false
-                });
-                
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(d => d.kind === 'videoinput');
-                
-                logSystem(`FOUND ${videoDevices.length} LENSES. CYCLING FOR LED CONTROL...`);
-                
-                // Kill the temporary stream so we can test the specific device IDs
-                tempStream.getTracks().forEach(t => t.stop());
-                
-                let foundTorchStream = null;
-                let lensIndex = 1;
-                
-                for (let device of videoDevices) {
-                    statusEl.innerText = `PROBING LENS ${lensIndex}/${videoDevices.length}...`;
-                    logSystem(`TESTING: ${device.label || 'Lens ' + lensIndex}`);
-                    
-                    try {
-                        const testStream = await navigator.mediaDevices.getUserMedia({
-                            video: { deviceId: { exact: device.deviceId } },
-                            audio: false
-                        });
-                        
-                        const track = testStream.getVideoTracks()[0];
-                        const caps = typeof track.getCapabilities === 'function' ? track.getCapabilities() : null;
-                        
-                        // If this specific camera track supports physical torch mode, we stop searching!
-                        if (caps && caps.torch) {
-                            foundTorchStream = testStream;
-                            logSystem(`SUCCESS: PHYSICAL LED DETECTED ON ${device.label || 'LENS ' + lensIndex}`);
-                            break;
-                        } else {
-                            // Close this stream to free up resources before testing the next lens
-                            testStream.getTracks().forEach(t => t.stop());
-                        }
-                    } catch (err) {
-                        logSystem(`LENS ${lensIndex} INACCESSIBLE`);
-                    }
-                    lensIndex++;
-                }
-                
-                // Fallback: If no camera has physical torch capability (e.g. iOS or unsecured HTTP connection),
-                // just default back to standard environment back lens and let the screen-lantern work.
-                if (foundTorchStream) {
-                    localCameraStream = foundTorchStream;
-                    statusEl.innerText = "FLASHLIGHT OK";
-                } else {
-                    logSystem("NO HARDWARE LED SUPPORT DETECTED. USING SCREEN LANTERN FALLBACK.");
-                    localCameraStream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false
-                    });
-                }
-                
-                tryRegisterCamSlot(1);
-            } catch (err) {
-                logSystem("CRITICAL: HARDWARE ACCESS BLOCK");
-                statusEl.innerText = "CAMERA BLOCKED";
-            }
+            document.getElementById('slot-status').innerText = "CONNECTING...";
+            logSystem("DETERMINING CAMERA SLOT...");
+            tryRegisterCamSlot(1);
         }
 
         function checkMotionLoop() {
@@ -884,6 +818,7 @@
             setTimeout(checkMotionLoop, 150); 
         }
 
+        // Delay media streaming until slot is established so we can route front/back lens
         function tryRegisterCamSlot(slotNum) {
             if (slotNum > 4) {
                 document.getElementById('slot-status').innerText = "ROOM FULL";
@@ -895,7 +830,16 @@
 
             peer = new Peer(`${roomHash}-cam-${slotNum}`);
 
-            peer.on('open', (id) => {
+            peer.on('open', async (id) => {
+                const statusEl = document.getElementById('slot-status');
+                statusEl.innerText = "INITIALIZING CAMERA...";
+                
+                const success = await acquireCameraStream(slotNum);
+                if (!success) {
+                    statusEl.innerText = "CAMERA ERROR";
+                    return;
+                }
+
                 if (slotNum === 1) {
                     document.getElementById('slot-status').innerText = `GEN ROOM (CAM 1)`;
                     document.getElementById('cam-controls').style.display = "block";
@@ -928,6 +872,79 @@
                     setTimeout(() => { tryRegisterCamSlot(slotNum + 1); }, 600);
                 }
             });
+        }
+
+        // NEW: Tailored hardware selection depending on Camera Slot assignment
+        async function acquireCameraStream(slotNum) {
+            const statusEl = document.getElementById('slot-status');
+            
+            try {
+                if (slotNum === 1) {
+                    // Generator camera specifically boots the selfie/front camera!
+                    logSystem("GENERATOR CAM DETECTED. FORCING FRONT-FACING CAMERA...");
+                    localCameraStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+                        audio: false
+                    });
+                    logSystem("FRONT SELFIE LENS LOCKED. READY FOR GENERATOR WIRES.");
+                    return true;
+                } else {
+                    // Cams 2, 3, and 4 use the Back Camera + sweep for physical LED support!
+                    logSystem(`CAM ${slotNum} DETECTED. SWEEPING LENSES FOR LED CONTROL...`);
+                    
+                    const tempStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' }, audio: false
+                    });
+                    
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                    
+                    tempStream.getTracks().forEach(t => t.stop());
+                    
+                    let foundTorchStream = null;
+                    let lensIndex = 1;
+                    
+                    for (let device of videoDevices) {
+                        statusEl.innerText = `PROBING LENS ${lensIndex}/${videoDevices.length}...`;
+                        logSystem(`TESTING LENS: ${device.label || 'Lens ' + lensIndex}`);
+                        
+                        try {
+                            const testStream = await navigator.mediaDevices.getUserMedia({
+                                video: { deviceId: { exact: device.deviceId } },
+                                audio: false
+                            });
+                            
+                            const track = testStream.getVideoTracks()[0];
+                            const caps = typeof track.getCapabilities === 'function' ? track.getCapabilities() : null;
+                            
+                            if (caps && caps.torch) {
+                                foundTorchStream = testStream;
+                                logSystem(`SUCCESS: PHYSICAL LED SUPPORT FOUND ON ${device.label || 'LENS ' + lensIndex}`);
+                                break;
+                            } else {
+                                testStream.getTracks().forEach(t => t.stop());
+                            }
+                        } catch (err) {
+                            logSystem(`LENS ${lensIndex} INACCESSIBLE`);
+                        }
+                        lensIndex++;
+                    }
+                    
+                    if (foundTorchStream) {
+                        localCameraStream = foundTorchStream;
+                    } else {
+                        logSystem("NO HARDWARE LED SUPPORT DETECTED. USING SCREEN FLASH FALLBACK.");
+                        localCameraStream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                            audio: false
+                        });
+                    }
+                    return true;
+                }
+            } catch (err) {
+                logSystem("CRITICAL: HARDWARE ACCESS BLOCK");
+                return false;
+            }
         }
 
         function camConnectToGuard() {
@@ -1114,6 +1131,7 @@
             return { x, y };
         }
 
+        // Mouse & Touch Interaction
         function onPuzzleStart(e) {
             const coords = getPuzzleCoords(e);
             
