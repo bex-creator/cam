@@ -487,26 +487,28 @@
             } catch (e) {}
         }
 
-        // Procedural music box eerie melody loop for total power loss (Game over)
+        // Expanded 32-note creepy music box sequence (Classic Toreador theme variation)
         let creepyTuneInterval = null;
         function playCreepyTune() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 
-                // Classic music box nursery song (modified to sound slightly detuned and haunting)
+                // Detailed 32-note progression
                 const melody = [
-                    659.25, 493.88, 523.25, 440.00, 493.88, 415.30, 440.00, 0,
-                    659.25, 587.33, 523.25, 493.88, 440.00, 415.30, 392.00, 329.63
+                    392.00, 349.23, 392.00, 293.66, 466.16, 440.00, 392.00, 349.23, 
+                    392.00, 293.66, 466.16, 440.00, 392.00, 0,      392.00, 440.00, 
+                    466.16, 523.25, 587.33, 466.16, 392.00, 349.23, 392.00, 293.66, 
+                    466.16, 440.00, 392.00, 349.23, 329.63, 293.66, 220.00, 0
                 ];
                 
                 let time = audioCtx.currentTime;
-                const noteDuration = 0.45; // Tempo rhythm speed
+                const noteDuration = 0.48; // Tempo rhythm speed
                 
                 function playSequence() {
                     melody.forEach((freq) => {
                         if (freq > 0) {
-                            // Introduce vintage pitch flutter (analog tape/windup errors)
-                            const detune = (Math.random() - 0.5) * 3.0; 
+                            // Detuned analog wobble simulating a winding clockwork device
+                            const detune = (Math.random() - 0.5) * 4.0; 
                             
                             const osc = audioCtx.createOscillator();
                             const gain = audioCtx.createGain();
@@ -514,7 +516,7 @@
                             osc.type = 'sine'; 
                             osc.frequency.setValueAtTime(freq + detune, time);
                             
-                            // High-pitch overtones simulating tiny metal teeth striking
+                            // High tinny overtone bell effect
                             const chime = audioCtx.createOscillator();
                             const chimeGain = audioCtx.createGain();
                             chime.type = 'sine';
@@ -522,11 +524,11 @@
                             
                             gain.gain.setValueAtTime(0, time);
                             gain.gain.linearRampToValueAtTime(0.12, time + 0.01); 
-                            gain.gain.exponentialRampToValueAtTime(0.001, time + 1.1); 
+                            gain.gain.exponentialRampToValueAtTime(0.001, time + 1.2); 
                             
                             chimeGain.gain.setValueAtTime(0, time);
                             chimeGain.gain.linearRampToValueAtTime(0.03, time + 0.005); 
-                            chimeGain.gain.exponentialRampToValueAtTime(0.001, time + 0.3); 
+                            chimeGain.gain.exponentialRampToValueAtTime(0.001, time + 0.35); 
 
                             osc.connect(gain);
                             gain.connect(audioCtx.destination);
@@ -535,9 +537,9 @@
                             chimeGain.connect(audioCtx.destination);
                             
                             osc.start(time);
-                            osc.stop(time + 1.2);
+                            osc.stop(time + 1.3);
                             chime.start(time);
-                            chime.stop(time + 0.4);
+                            chime.stop(time + 0.5);
                         }
                         time += noteDuration;
                     });
@@ -545,11 +547,11 @@
                 
                 playSequence();
                 
-                // Loops indefinitely during death/outage
+                // Loops perfectly based on actual dynamic count of notes
                 creepyTuneInterval = setInterval(() => {
                     time = audioCtx.currentTime;
                     playSequence();
-                }, 16 * noteDuration * 1000);
+                }, melody.length * noteDuration * 1000);
                 
             } catch (e) {
                 console.error("Music synthesis failed:", e);
@@ -681,7 +683,7 @@
             isPowerOut = true;
             triggerFlashlight(false);
             
-            // Power runs out: Trigger the scary music box
+            // Power runs out: Trigger the expanded music box loop
             playCreepyTune();
 
             for (let slot in dataConnections) {
@@ -998,7 +1000,7 @@
                     toggleDeviceFlashlight(localCameraStream, data.state);
                 }
                 if (data.type === 'sabotage_outage') {
-                    // Generator failure plays the power drop sound
+                    // Generator failure plays the mechanical down sound
                     playGeneratorOutSound();
                     if (currentSlot === 1) {
                         openPhysicalGeneratorRepair();
@@ -1009,7 +1011,7 @@
                     }
                 }
                 if (data.type === 'gameover_death') {
-                    // Real Game Over death plays the creepy tune
+                    // Total power loss plays the extended creepy tune
                     playCreepyTune();
                     document.getElementById('death-screen').style.display = 'block';
                     document.getElementById('monitor-container').style.display = 'none';
@@ -1105,6 +1107,7 @@
             return array;
         }
 
+        // ... Wire puzzle math remains unchanged ...
         function drawWirePuzzle() {
             const canvas = document.getElementById('wire-canvas');
             const ctx = canvas.getContext('2d');
@@ -1371,7 +1374,6 @@
         let isFKeyPressed = false;
 
         window.addEventListener('keydown', (e) => {
-            // Ignore keystrokes if the user is somehow focused on an input element
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
             if (e.key === 'f' || e.key === 'F') {
