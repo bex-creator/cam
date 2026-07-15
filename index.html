@@ -87,7 +87,7 @@
         .monitor-container.light-on #main-monitor { filter: grayscale(30%) contrast(100%) brightness(120%); }
         .monitor-container.light-on .light-overlay { opacity: 1; }
 
-        /* Red "NO SIGNAL" screen */
+        /* Red "NO SIGNAL" / Blackout screen */
         .offline-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -97,6 +97,8 @@
             z-index: 3;
             text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
             font-weight: bold; letter-spacing: 5px;
+            text-align: center;
+            line-height: 1.5;
         }
 
         /* Retro TV CRT static */
@@ -133,9 +135,30 @@
             background-color: red;
             border-radius: 50%;
             z-index: 20;
-            display: none; /* Hidden by default */
+            display: none;
             box-shadow: 0 0 15px red;
             animation: blink 1.5s infinite;
+        }
+
+        /* Local Warning Banner for Cam Users when they trigger movement */
+        .motion-alert-banner {
+            position: absolute;
+            top: 130px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 0, 0.85);
+            color: #fff;
+            font-weight: bold;
+            padding: 10px 20px;
+            font-size: 0.85rem;
+            border-radius: 4px;
+            display: none;
+            z-index: 50;
+            box-shadow: 0 0 15px rgba(255,0,0,0.7);
+            border: 1px solid white;
+            letter-spacing: 1.5px;
+            animation: blink 1s infinite;
+            text-align: center;
         }
 
         @keyframes blink {
@@ -154,7 +177,7 @@
             border: 2px solid white; cursor: pointer;
             z-index: 20; touch-action: none;
             box-shadow: 0 0 10px rgba(255,255,255,0.2);
-            display: none; /* Hidden until assigned Guard role */
+            display: none; 
         }
 
         #flashlight-btn:active {
@@ -168,7 +191,7 @@
             width: 280px;
             border: 2px solid white; background: rgba(0, 0, 0, 0.8);
             padding: 15px;
-            display: none; /* Hidden until assigned Guard role */
+            display: none; 
             grid-template-columns: 1fr 1fr; gap: 15px; z-index: 20;
         }
 
@@ -185,6 +208,37 @@
             border-color: #fff !important; box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
+        /* Retro Terminal Style Debug Log */
+        .system-log {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 320px;
+            height: 90px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #222;
+            color: #00ff00;
+            font-size: 0.7rem;
+            padding: 10px;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 40;
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 1.3;
+            text-shadow: 0 0 2px #00ff00;
+        }
+
+        /* Blinding screen flash for non-compatible phones */
+        #screen-flash {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: #ffffff;
+            z-index: 100;
+            display: none;
+            pointer-events: none;
+        }
+
         @keyframes staticNoise {
             0% { transform: translate(0, 0); } 20% { transform: translate(1px, 2px); }
             40% { transform: translate(1px, 1px); } 60% { transform: translate(2px, -1px); }
@@ -193,6 +247,9 @@
     </style>
 </head>
 <body>
+
+    <!-- Blinding Screen Flash (Hardware Fallback) -->
+    <div id="screen-flash"></div>
 
     <!-- Upper Control Bar -->
     <div class="lobby-bar">
@@ -213,6 +270,9 @@
         
         <div class="cam-label" id="cam-label">LOBBY</div>
         <div class="recording-dot" id="recording-dot"></div>
+
+        <!-- Camera User Local Motion Banner -->
+        <div class="motion-alert-banner" id="motion-alert-banner">⚠️ MOTION DETECTED - FEED SECURED ⚠️</div>
         
         <!-- Guard Controls -->
         <button id="flashlight-btn" 
@@ -224,6 +284,9 @@
             🔦 LIGHT
         </button>
     </div>
+
+    <!-- FNAF Rolling Terminal System Log -->
+    <div class="system-log" id="system-log">> TERMINAL INITIALIZED...</div>
 
     <div class="camera-map" id="camera-map">
         <button class="cam-btn active" data-cam="cam1" onclick="switchCamera(event, 'cam1', 'CAM 01')">CAM 01 (OFFLINE)</button>
@@ -238,7 +301,7 @@
         const offlineScreen = document.getElementById('offline-screen');
         const buttons = document.querySelectorAll('.cam-btn');
 
-        let myRole = null; // Will become 'guard' or 'cam'
+        let myRole = null; 
         let localCameraStream = null;
         let currentCamId = 'cam1'; 
         let peer = null;
@@ -246,6 +309,20 @@
 
         const connectedStreams = { 'cam1': null, 'cam2': null, 'cam3': null, 'cam4': null };
         const dataConnections = { 'cam1': null, 'cam2': null, 'cam3': null, 'cam4': null };
+        
+        // Motion state tracking (Guard monitors these)
+        const motionStates = { 'cam1': false, 'cam2': false, 'cam3': false, 'cam4': false };
+
+        let guardDataConnection = null; 
+        let guardMediaCall = null;
+
+        // Motion analysis variables (Cameras monitor these)
+        let motionCanvas = null;
+        let motionCtx = null;
+        let prevFrameData = null;
+        let motionTimeout = null;
+        let isCurrentlyMoving = false;
+        let ignoreMotionUntil = 0; // Safeguard when flashlight state changes
 
         // 1. Room Generation
         let roomHash = window.location.hash.substring(1);
@@ -254,6 +331,15 @@
             window.location.hash = roomHash;
         }
         document.getElementById('room-id-display').innerText = roomHash.toUpperCase();
+
+        function logSystem(msg) {
+            console.log(msg);
+            const logEl = document.getElementById('system-log');
+            if (logEl) {
+                const lines = logEl.innerHTML.split('<br>');
+                logEl.innerHTML = `> ${msg}<br>` + lines.slice(0, 3).join('<br>');
+            }
+        }
 
         function copyRoomLink() {
             navigator.clipboard.writeText(window.location.href);
@@ -270,61 +356,79 @@
             peer.on('open', (id) => {
                 myRole = 'guard';
                 document.getElementById('slot-status').innerText = "SECURITY GUARD (NO CAM REQ)";
+                logSystem("ASSIGNED ROLE: SECURITY GUARD");
                 
-                // Show Guard UI
                 document.getElementById('camera-map').style.display = 'grid';
                 document.getElementById('flashlight-btn').style.display = 'block';
                 camLabel.innerText = "CAM 01";
 
                 setupGuardListeners();
-                guardConnectToCams();
                 updateMonitorFeed();
             });
 
             peer.on('error', (err) => {
                 if (err.type === 'unavailable-id') {
-                    // Guard is taken! Become a camera instead.
                     peer.destroy();
                     initCameraMode();
+                } else {
+                    logSystem(`GUARD ERROR: ${err.type}`);
                 }
             });
         }
 
         function setupGuardListeners() {
-            // Receive video streams from cameras
             peer.on('call', (call) => {
                 const targetSlot = getSlotFromPeerId(call.peer);
                 if (!targetSlot) return;
 
-                call.answer(); // Accept without sending video back
+                logSystem(`FEED ATTEMPT FROM CAM 0${targetSlot.slice(3)}`);
+                call.answer(); 
                 
                 call.on('stream', (remoteStream) => {
                     connectedStreams[targetSlot] = remoteStream;
+                    logSystem(`CAM 0${targetSlot.slice(3)} STREAM IS LIVE`);
                     updateCameraMapUI();
                     updateMonitorFeed();
                 });
 
                 call.on('close', () => {
                     connectedStreams[targetSlot] = null;
+                    motionStates[targetSlot] = false; // Reset if camera disconnects
+                    logSystem(`CAM 0${targetSlot.slice(3)} STREAM TERMINATED`);
                     updateCameraMapUI();
                     updateMonitorFeed();
                 });
             });
 
-            // Receive data connections (for flashlight routing)
             peer.on('connection', (conn) => {
                 const targetSlot = getSlotFromPeerId(conn.peer);
-                if (targetSlot) dataConnections[targetSlot] = conn;
-            });
-        }
+                if (!targetSlot) return;
 
-        function guardConnectToCams() {
-            // Reconnect logic in case guard refreshed page
-            for (let i = 1; i <= 4; i++) {
-                const targetSlot = 'cam' + i;
-                const conn = peer.connect(`${roomHash}-cam-${i}`);
-                conn.on('open', () => { dataConnections[targetSlot] = conn; });
-            }
+                logSystem(`DATA CHANNEL ATTEMPT: CAM 0${targetSlot.slice(3)}`);
+
+                conn.on('open', () => {
+                    dataConnections[targetSlot] = conn;
+                    logSystem(`CAM 0${targetSlot.slice(3)} DATA CHANNEL ONLINE`);
+                    updateCameraMapUI();
+                });
+
+                conn.on('data', (data) => {
+                    if (data.type === 'motion') {
+                        motionStates[targetSlot] = data.state;
+                        logSystem(`CAM 0${targetSlot.slice(3)} MOTION STATE: ${data.state ? "DETECTED" : "CLEARED"}`);
+                        updateCameraMapUI();
+                        updateMonitorFeed();
+                    }
+                });
+
+                conn.on('close', () => {
+                    dataConnections[targetSlot] = null;
+                    motionStates[targetSlot] = false;
+                    logSystem(`CAM 0${targetSlot.slice(3)} DATA CHANNEL OFFLINE`);
+                    updateCameraMapUI();
+                    updateMonitorFeed();
+                });
+            });
         }
 
         // ==========================================
@@ -333,21 +437,23 @@
         async function initCameraMode() {
             myRole = 'cam';
             document.getElementById('slot-status').innerText = "REQUESTING CAMERA...";
+            logSystem("ROLE: REMOTE SECURITY CAMERA");
             
             try {
-                // Try strictly for the back camera first
                 localCameraStream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: { exact: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
                     audio: false
                 });
+                logSystem("REAR CAMERA INITIALIZED");
             } catch (err) {
                 try {
-                    // PC Fallback
                     localCameraStream = await navigator.mediaDevices.getUserMedia({
                         video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false
                     });
+                    logSystem("FRONT/FALLBACK CAMERA INITIALIZED");
                 } catch (fallbackErr) {
                     document.getElementById('slot-status').innerText = "CAMERA BLOCKED";
+                    logSystem("CRITICAL: CAMERA PERMISSION BLOCKED");
                     return;
                 }
             }
@@ -357,6 +463,7 @@
         function tryRegisterCamSlot(slotNum) {
             if (slotNum > 4) {
                 document.getElementById('slot-status').innerText = "ROOM FULL";
+                logSystem("ROOM FULL (MAX 4 CAMS)");
                 return;
             }
 
@@ -365,54 +472,167 @@
 
             peer.on('open', (id) => {
                 document.getElementById('slot-status').innerText = `LIVE BROADCASTING...`;
+                logSystem(`REGISTERED AS CAMERA 0${slotNum}`);
                 
-                // Show Camera UI (Hide switchers, show recording dot)
                 document.getElementById('camera-map').style.display = 'none';
                 document.getElementById('flashlight-btn').style.display = 'none';
                 document.getElementById('recording-dot').style.display = 'block';
                 camLabel.innerText = `CAM 0${slotNum} - RECORDING`;
                 
-                // Show own camera feed locally so they can aim the phone
                 mainMonitor.srcObject = localCameraStream;
                 mainMonitor.style.display = "block";
                 offlineScreen.style.display = "none";
 
-                setupCameraListeners();
+                peer.on('error', (err) => {
+                    logSystem(`NET ERROR: ${err.type}`);
+                    if (err.type === 'peer-unavailable') {
+                        logSystem("GUARD DESK OFFLINE. RETRYING...");
+                        setTimeout(camConnectToGuard, 3000);
+                    }
+                });
+
                 camConnectToGuard();
+                initMotionDetection(); // Run movement detection engine
             });
 
             peer.on('error', (err) => {
                 if (err.type === 'unavailable-id') {
                     peer.destroy();
-                    tryRegisterCamSlot(slotNum + 1); // Slot taken, try next
-                }
-            });
-        }
-
-        function setupCameraListeners() {
-            // Listen for Guard reconnecting
-            peer.on('connection', (conn) => {
-                if (conn.peer === `${roomHash}-guard`) {
-                    conn.on('data', (data) => {
-                        if (data.type === 'flashlight') toggleDeviceFlashlight(localCameraStream, data.state);
-                    });
-                    // Guard is back, call them with video
-                    peer.call(`${roomHash}-guard`, localCameraStream);
+                    tryRegisterCamSlot(slotNum + 1); 
                 }
             });
         }
 
         function camConnectToGuard() {
             const guardId = `${roomHash}-guard`;
-            
-            // Connect to guard for data (flashlight)
+            logSystem(`CONNECTING TO GUARD DESK...`);
+
+            if (guardDataConnection) { try { guardDataConnection.close(); } catch(e){} }
+            if (guardMediaCall) { try { guardMediaCall.close(); } catch(e){} }
+
             const conn = peer.connect(guardId);
-            conn.on('data', (data) => {
-                if (data.type === 'flashlight') toggleDeviceFlashlight(localCameraStream, data.state);
+            conn.on('open', () => {
+                guardDataConnection = conn;
+                logSystem(`DATA SENT TO GUARD DESK`);
+                // Resend current motion state immediately upon connecting
+                sendMotionStateToGuard(isCurrentlyMoving);
             });
 
-            // Call guard with video stream
-            peer.call(guardId, localCameraStream);
+            conn.on('data', (data) => {
+                logSystem(`CMD RECEIVED: ${data.type.toUpperCase()} = ${data.state ? "ON" : "OFF"}`);
+                if (data.type === 'flashlight') {
+                    toggleDeviceFlashlight(localCameraStream, data.state);
+                }
+            });
+
+            conn.on('close', () => {
+                logSystem(`LOST GUARD DESK. RE-CONNECTING...`);
+                setTimeout(camConnectToGuard, 3000);
+            });
+
+            guardMediaCall = peer.call(guardId, localCameraStream);
+        }
+
+        // ==========================================
+        // MOTION DETECTION ENGINE (Camera Side)
+        // ==========================================
+        function initMotionDetection() {
+            motionCanvas = document.createElement('canvas');
+            motionCanvas.width = 48;  // Highly efficient low-res matrix for rapid frame comparison
+            motionCanvas.height = 36;
+            motionCtx = motionCanvas.getContext('2d');
+
+            // Run pixel comparisons every 150ms (nearly instantaneous response)
+            setInterval(analyzeCameraMovementFrame, 150);
+        }
+
+        function analyzeCameraMovementFrame() {
+            if (!localCameraStream || !mainMonitor || mainMonitor.paused || mainMonitor.ended) return;
+
+            // If we are actively flashing the light, ignore frames to prevent the flash itself from triggering a blackout
+            if (Date.now() < ignoreMotionUntil) {
+                prevFrameData = null; 
+                return; 
+            }
+
+            try {
+                motionCtx.drawImage(mainMonitor, 0, 0, motionCanvas.width, motionCanvas.height);
+                const currentFrame = motionCtx.getImageData(0, 0, motionCanvas.width, motionCanvas.height);
+                const data = currentFrame.data;
+
+                if (prevFrameData) {
+                    let changedPixels = 0;
+                    const totalPixels = motionCanvas.width * motionCanvas.height;
+
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r1 = data[i], g1 = data[i+1], b1 = data[i+2];
+                        const r2 = prevFrameData[i], g2 = prevFrameData[i+1], b2 = prevFrameData[i+2];
+
+                        // Calculate basic grayscale brightness
+                        const bright1 = (r1 + g1 + b1) / 3;
+                        const bright2 = (r2 + g2 + b2) / 3;
+
+                        // Pixel variation threshold
+                        if (Math.abs(bright1 - bright2) > 22) { 
+                            changedPixels++;
+                        }
+                    }
+
+                    const changeRatio = changedPixels / totalPixels;
+                    // Adjust 0.05 (5%) here to change physical motion sensitivity
+                    const motionThreshold = 0.05; 
+
+                    if (changeRatio > motionThreshold) {
+                        triggerMotionState(true);
+                    } else {
+                        triggerMotionState(false);
+                    }
+                }
+
+                prevFrameData = new Uint8ClampedArray(data); // Clone frame state
+            } catch (e) {
+                // Video stream drawing might hit temporary ready-state gaps
+            }
+        }
+
+        function triggerMotionState(movingNow) {
+            if (movingNow) {
+                if (motionTimeout) {
+                    clearTimeout(motionTimeout);
+                    motionTimeout = null;
+                }
+
+                if (!isCurrentlyMoving) {
+                    isCurrentlyMoving = true;
+                    logSystem("⚠️ MOTION REGISTERED!");
+                    sendMotionStateToGuard(true);
+                    updateLocalMotionAlertUI(true);
+                }
+            } else {
+                // Wait for 1.5 seconds of total stillness before declaring motion is cleared
+                if (isCurrentlyMoving && !motionTimeout) {
+                    motionTimeout = setTimeout(() => {
+                        isCurrentlyMoving = false;
+                        logSystem("MOTION CLEARED.");
+                        sendMotionStateToGuard(false);
+                        updateLocalMotionAlertUI(false);
+                        motionTimeout = null;
+                    }, 1500); 
+                }
+            }
+        }
+
+        function sendMotionStateToGuard(active) {
+            if (guardDataConnection && guardDataConnection.open) {
+                guardDataConnection.send({ type: 'motion', state: active });
+            }
+        }
+
+        function updateLocalMotionAlertUI(isMoving) {
+            const banner = document.getElementById('motion-alert-banner');
+            if (banner) {
+                banner.style.display = isMoving ? 'block' : 'none';
+            }
         }
 
         // ==========================================
@@ -424,7 +644,18 @@
         }
 
         function updateMonitorFeed() {
-            if (myRole !== 'guard') return; // Cameras handle their own feed
+            if (myRole !== 'guard') return; 
+
+            // Handle blackout immediately if current selected cam has motion
+            const isBlackedOut = motionStates[currentCamId];
+
+            if (isBlackedOut) {
+                mainMonitor.srcObject = null;
+                mainMonitor.style.display = "none";
+                offlineScreen.innerHTML = "<div style='color:#ff0000; font-size:1.8rem; text-shadow: 0 0 10px red;'>MOTION DETECTED<br><span style='font-size:1.1rem; color:#555; text-shadow:none;'>VIDEO FEED SUSPENDED</span></div>";
+                offlineScreen.style.display = "flex";
+                return;
+            }
 
             if (connectedStreams[currentCamId]) {
                 mainMonitor.srcObject = connectedStreams[currentCamId];
@@ -433,20 +664,34 @@
             } else {
                 mainMonitor.srcObject = null;
                 mainMonitor.style.display = "none";
+                offlineScreen.innerHTML = "NO SIGNAL";
                 offlineScreen.style.display = "flex";
             }
         }
 
         function updateCameraMapUI() {
             for (let i = 1; i <= 4; i++) {
-                const btn = document.querySelector(`.cam-btn[data-cam="cam${i}"]`);
+                const slotKey = 'cam' + i;
+                const btn = document.querySelector(`.cam-btn[data-cam="${slotKey}"]`);
                 if (!btn) continue;
                 
-                if (connectedStreams['cam' + i]) {
+                if (connectedStreams[slotKey]) {
                     btn.classList.add('online');
-                    btn.innerText = `CAM 0${i}`;
+                    
+                    // Dynamic map visual alerts for active motion!
+                    if (motionStates[slotKey]) {
+                        btn.style.color = "#ff2222";
+                        btn.style.borderColor = "#ff2222";
+                        btn.innerText = `CAM 0${i} (MOTION)`;
+                    } else {
+                        btn.style.color = "";
+                        btn.style.borderColor = "";
+                        btn.innerText = `CAM 0${i}`;
+                    }
                 } else {
                     btn.classList.remove('online');
+                    btn.style.color = "";
+                    btn.style.borderColor = "";
                     btn.innerText = `CAM 0${i} (OFFLINE)`;
                 }
             }
@@ -455,7 +700,7 @@
         function switchCamera(event, camId, labelText) {
             if (myRole !== 'guard') return;
 
-            triggerFlashlight(false); // Turn off light when switching
+            triggerFlashlight(false); 
             currentCamId = camId;
             camLabel.innerText = labelText;
             updateMonitorFeed();
@@ -465,18 +710,40 @@
             if (activeBtn) activeBtn.classList.add('active');
         }
 
-        // Hardware Toggle
+        // Hardware Flashlight Toggler
         async function toggleDeviceFlashlight(stream, turnOn) {
             if (!stream) return;
             const track = stream.getVideoTracks()[0];
             if (!track) return;
 
+            // Set safeguard timeline to bypass brightness shifts from flashlights
+            ignoreMotionUntil = Date.now() + 1200;
+
             try {
+                if (typeof track.getCapabilities !== 'function') {
+                    logSystem("HARDWARE TORCH NOT SUPPORTED. USING SCREEN FLASH.");
+                    triggerScreenFlash(turnOn);
+                    return;
+                }
+
                 const capabilities = track.getCapabilities();
                 if (capabilities.torch !== undefined) {
+                    logSystem(`APPLYING HARDWARE FLASHLIGHT: ${turnOn}`);
                     await track.applyConstraints({ advanced: [{ torch: turnOn }] });
+                } else {
+                    logSystem("NO HARDWARE TORCH CAPABILITY. USING SCREEN FLASH.");
+                    triggerScreenFlash(turnOn);
                 }
-            } catch (err) { console.warn("Failed to toggle hardware light: ", err); }
+            } catch (err) { 
+                logSystem(`TORCH API LIMITATION: USING SCREEN FLASH.`); 
+                triggerScreenFlash(turnOn);
+            }
+        }
+
+        function triggerScreenFlash(turnOn) {
+            const flashEl = document.getElementById('screen-flash');
+            if (!flashEl) return;
+            flashEl.style.display = turnOn ? 'block' : 'none';
         }
 
         // Guard Light Button Controller
@@ -488,8 +755,15 @@
             else monitorContainer.classList.remove('light-on');
             
             const conn = dataConnections[currentCamId];
-            if (conn && conn.open) {
-                conn.send({ type: 'flashlight', state: isPressed });
+            if (conn) {
+                logSystem(`ROUTING LIGHT CMD TO ${currentCamId.toUpperCase()}`);
+                try {
+                    conn.send({ type: 'flashlight', state: isPressed });
+                } catch (e) {
+                    logSystem(`ERROR SENDING LIGHT CMD: ${e.message}`);
+                }
+            } else {
+                logSystem(`CANNOT SEND LIGHT: CAM OFFLINE`);
             }
         }
 
