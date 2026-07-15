@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FNAF Security Cameras</title>
+    <title>FNAF Multiplayer Security Cameras</title>
+    
+    <!-- PeerJS for effortless P2P networking -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+
     <style>
         * {
             box-sizing: border-box;
@@ -15,8 +19,47 @@
             font-family: 'Courier New', Courier, monospace;
             overflow: hidden;
             margin: 0;
-            /* Prevents pull-to-refresh on mobile devices */
             overscroll-behavior-y: contain; 
+            user-select: none;
+        }
+
+        /* Top Retro Status Console */
+        .lobby-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            border-bottom: 2px solid #333;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 30;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        .share-btn {
+            background: transparent;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .share-btn:hover {
+            background: #00ff00;
+            color: black;
+        }
+
+        #slot-status {
+            color: #ffcc00;
+            font-weight: bold;
         }
 
         .monitor-container {
@@ -26,18 +69,78 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #111;
+            background-color: #050505;
         }
 
-        /* The actual video feed */
+        /* The Live Feed styling */
         #main-monitor {
+            position: absolute;
             width: 100%;
             height: 100%;
             object-fit: cover;
-            filter: grayscale(70%) contrast(140%) brightness(80%);
+            filter: grayscale(60%) contrast(140%) brightness(70%);
+            z-index: 1;
         }
 
-        /* FNAF Scanline Overlay */
+        /* Visual Spotlight overlay when security light is active */
+        .light-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,240,0.5) 20%, rgba(0,0,0,0.85) 80%);
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.1s ease;
+        }
+
+        /* Dynamic flashlight classes */
+        .monitor-container.light-on #main-monitor {
+            filter: grayscale(30%) contrast(100%) brightness(120%);
+        }
+
+        .monitor-container.light-on .light-overlay {
+            opacity: 1;
+        }
+
+        /* Red "NO SIGNAL" screen when a camera is empty */
+        .offline-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #070707;
+            color: #ff0000;
+            font-size: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 3;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+            font-weight: bold;
+            letter-spacing: 5px;
+        }
+
+        /* Retro TV CRT static overlay */
+        .static-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-radial-gradient(circle, #333, #000 2px, #333 4px);
+            background-size: 8px 8px;
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 4;
+            animation: staticNoise 0.1s infinite;
+        }
+
+        /* TV scanlines overlay */
         .scanlines {
             position: absolute;
             top: 0;
@@ -52,13 +155,13 @@
                 rgba(0,0,0,0.2)
             );
             background-size: 100% 4px;
-            pointer-events: none; /* Allows clicks to pass through */
-            z-index: 10;
+            pointer-events: none;
+            z-index: 5;
         }
 
         .cam-label {
             position: absolute;
-            top: 30px;
+            top: 80px;
             left: 40px;
             font-size: 2rem;
             font-weight: bold;
@@ -68,7 +171,7 @@
             letter-spacing: 2px;
         }
 
-        /* Flashlight Button - FNAF 2 Style */
+        /* Flashlight / Light Button */
         #flashlight-btn {
             position: absolute;
             bottom: 40px;
@@ -77,13 +180,12 @@
             font-size: 1.5rem;
             font-family: inherit;
             font-weight: bold;
-            background: rgba(30, 30, 30, 0.8);
+            background: rgba(30, 30, 30, 0.85);
             color: white;
             border: 2px solid white;
             cursor: pointer;
-            user-select: none;
             z-index: 20;
-            touch-action: none; /* Stops mobile browser zooming on double-tap */
+            touch-action: none;
             box-shadow: 0 0 10px rgba(255,255,255,0.2);
         }
 
@@ -93,14 +195,14 @@
             box-shadow: 0 0 20px rgba(255,255,255,0.8);
         }
 
-        /* Camera Map Switcher */
+        /* Camera Nav Map */
         .camera-map {
             position: absolute;
             bottom: 30px;
             right: 30px;
-            width: 250px;
+            width: 280px;
             border: 2px solid white;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             padding: 15px;
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -109,59 +211,98 @@
         }
 
         .cam-btn {
-            background: transparent;
-            color: white;
-            border: 1px solid white;
+            background: rgba(10, 10, 10, 0.6);
+            color: #555; /* Dim color if offline */
+            border: 1px solid #333;
             padding: 15px 0;
             cursor: pointer;
             font-family: inherit;
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             font-weight: bold;
-            transition: background 0.1s;
+            transition: all 0.1s;
         }
 
+        /* Green illuminated text if active online stream exists */
+        .cam-btn.online {
+            color: #00ff00;
+            border-color: #00ff00;
+        }
+
+        /* Highlighted button for currently viewed feed */
         .cam-btn.active {
-            background: white;
-            color: black;
+            background: #fff !important;
+            color: black !important;
+            border-color: #fff !important;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes staticNoise {
+            0% { transform: translate(0, 0); }
+            10% { transform: translate(-1px, -1px); }
+            20% { transform: translate(1px, 2px); }
+            30% { transform: translate(-2px, -2px); }
+            40% { transform: translate(1px, 1px); }
+            50% { transform: translate(-1px, 2px); }
+            60% { transform: translate(2px, -1px); }
+            70% { transform: translate(-1px, -1px); }
+            80% { transform: translate(1px, 2px); }
+            90% { transform: translate(-2px, -2px); }
+            100% { transform: translate(0, 0); }
         }
     </style>
 </head>
 <body>
 
+    <!-- Upper Control Bar -->
+    <div class="lobby-bar">
+        <div>
+            ROOM: <span id="room-id-display">...</span> | 
+            STATUS: <span id="slot-status">INIT CAMERA...</span>
+        </div>
+        <button class="share-btn" onclick="copyRoomLink()">📋 COPY ROOM LINK</button>
+    </div>
+
     <!-- Monitor View -->
     <div class="monitor-container">
         <video id="main-monitor" autoplay playsinline muted></video>
+        <div class="light-overlay" id="light-overlay"></div>
+        <div class="offline-screen" id="offline-screen">NO SIGNAL</div>
+        <div class="static-overlay"></div>
         <div class="scanlines"></div>
+        
         <div class="cam-label" id="cam-label">CAM 01</div>
         
-        <!-- Flashlight handles both mouse clicks (PC) and finger taps (Mobile) -->
+        <!-- Lights support mobile touches and standard clicks -->
         <button id="flashlight-btn" 
                 onmousedown="triggerFlashlight(true)" 
                 onmouseup="triggerFlashlight(false)"
                 onmouseleave="triggerFlashlight(false)"
                 ontouchstart="triggerFlashlight(true); event.preventDefault();" 
                 ontouchend="triggerFlashlight(false); event.preventDefault();">
-            💡 LIGHT
+            🔦 LIGHT
         </button>
     </div>
 
-    <!-- Camera Navigation Map -->
+    <!-- Camera Switcher Grid -->
     <div class="camera-map">
-        <button class="cam-btn active" onclick="switchCamera(event, 'cam1', 'CAM 01')">CAM 01</button>
-        <button class="cam-btn" onclick="switchCamera(event, 'cam2', 'CAM 02')">CAM 02</button>
-        <button class="cam-btn" onclick="switchCamera(event, 'cam3', 'CAM 03')">CAM 03</button>
-        <button class="cam-btn" onclick="switchCamera(event, 'cam4', 'CAM 04')">CAM 04</button>
+        <button class="cam-btn active" data-cam="cam1" onclick="switchCamera(event, 'cam1', 'CAM 01')">CAM 01 (OFFLINE)</button>
+        <button class="cam-btn" data-cam="cam2" onclick="switchCamera(event, 'cam2', 'CAM 02')">CAM 02 (OFFLINE)</button>
+        <button class="cam-btn" data-cam="cam3" onclick="switchCamera(event, 'cam3', 'CAM 03')">CAM 03 (OFFLINE)</button>
+        <button class="cam-btn" data-cam="cam4" onclick="switchCamera(event, 'cam4', 'CAM 04')">CAM 04 (OFFLINE)</button>
     </div>
 
     <script>
         const mainMonitor = document.getElementById('main-monitor');
         const camLabel = document.getElementById('cam-label');
+        const offlineScreen = document.getElementById('offline-screen');
         const buttons = document.querySelectorAll('.cam-btn');
 
         let localCameraStream = null;
         let currentCamId = 'cam1'; 
+        let peer = null;
+        let currentSlot = 1;
 
-        // Dictionary to store the feeds (Simulates multiplayer slots)
+        // Stores live video feeds from clients
         const connectedStreams = {
             'cam1': null, 
             'cam2': null,
@@ -169,89 +310,285 @@
             'cam4': null
         };
 
-        // 1. Smart Camera Setup with PC Fallback
+        // Stores live peer network data streams
+        const dataConnections = {
+            'cam1': null,
+            'cam2': null,
+            'cam3': null,
+            'cam4': null
+        };
+
+        // 1. Check/Configure Room ID Hash
+        let roomHash = window.location.hash.substring(1);
+        if (!roomHash) {
+            roomHash = "fnaf-" + Math.floor(1000 + Math.random() * 9000);
+            window.location.hash = roomHash;
+        }
+        document.getElementById('room-id-display').innerText = roomHash.toUpperCase();
+
+        // Copy room URL to clipboard
+        function copyRoomLink() {
+            navigator.clipboard.writeText(window.location.href);
+            const btn = document.querySelector('.share-btn');
+            btn.innerText = "COPIED!";
+            setTimeout(() => { btn.innerText = "📋 COPY ROOM LINK"; }, 2000);
+        }
+
+        // 2. Camera Stream Initialization (Rear/PC Fallback)
         async function startBroadcasting() {
             try {
-                // Attempt A: Request the rear "environment" camera (Works on Mobile)
                 localCameraStream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        facingMode: { exact: "environment" },
+                        facingMode: { exact: "environment" }, // Focus on environment camera first
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     },
                     audio: false
                 });
-                console.log("Rear phone camera active.");
+                console.log("Rear phone camera initialized.");
             } catch (err) {
-                console.log("Rear camera failed or not present. Activating standard PC webcam fallback...");
-                
+                console.log("Rear camera failed. Trying default fallback webcam...");
                 try {
-                    // Attempt B: Request any standard webcam (Works on PC/Laptop)
                     localCameraStream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        },
+                        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
                         audio: false
                     });
-                    console.log("PC webcam active.");
+                    console.log("PC camera fallback initialized.");
                 } catch (fallbackErr) {
-                    console.error("Camera access completely blocked: ", fallbackErr);
-                    camLabel.innerText = "ERROR: NO SIGNAL";
+                    console.error("Camera access blocked: ", fallbackErr);
+                    document.getElementById('slot-status').innerText = "CAMERA BLOCKED";
                     return;
                 }
             }
             
-            // Put our camera feed onto CAM 01 slot immediately
-            connectedStreams['cam1'] = localCameraStream;
-            mainMonitor.srcObject = connectedStreams['cam1'];
+            // Camera active! Proceed to grab network slot
+            tryRegisterSlot(1);
         }
 
-        // 2. Camera Switching Logic
-        function switchCamera(event, camId, labelText) {
-            currentCamId = camId;
-            camLabel.innerText = labelText;
-
-            // Push active stream to the monitor
-            if (connectedStreams[camId]) {
-                mainMonitor.srcObject = connectedStreams[camId];
-            } else {
-                mainMonitor.srcObject = null; // Blank black screen if nobody is connected to that camera
+        // 3. Connect to PeerJS Lobby slots recursively
+        function tryRegisterSlot(slotNum) {
+            if (slotNum > 4) {
+                document.getElementById('slot-status').innerText = "ROOM FULL (4/4)";
+                alert("This security lobby is full! Try sharing a new custom link.");
+                return;
             }
 
-            // Update UI buttons styling
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            document.getElementById('slot-status').innerText = `RESERVING CAM 0${slotNum}...`;
+            const peerId = `${roomHash}-cam-${slotNum}`;
+            
+            peer = new Peer(peerId);
+
+            peer.on('open', (id) => {
+                currentSlot = slotNum;
+                const statusSpan = document.getElementById('slot-status');
+                statusSpan.innerText = `CONNECTED AS CAM 0${slotNum}`;
+                statusSpan.className = "connected-status";
+                
+                // Mount our local stream immediately to our designated slot
+                connectedStreams['cam' + currentSlot] = localCameraStream;
+                updateCameraMapUI();
+                updateMonitorFeed();
+
+                // Start searching and connecting to other users in the room
+                connectToOtherPeers();
+                
+                // Configure incoming connections
+                setupNetworkListeners();
+            });
+
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') {
+                    // Current camera slot taken, try the next slot index
+                    peer.destroy();
+                    tryRegisterSlot(slotNum + 1);
+                } else {
+                    console.error("PeerJS Error: ", err);
+                }
+            });
         }
 
-        // 3. Hardware Torch controller
-        async function toggleDeviceFlashlight(stream, turnOn) {
-            if (!stream) return;
-            
-            const videoTrack = stream.getVideoTracks()[0];
-            const capabilities = videoTrack.getCapabilities();
+        // 4. Mesh Connections: Hook up calls to other cameras
+        function connectToOtherPeers() {
+            for (let i = 1; i <= 4; i++) {
+                if (i === currentSlot) continue; // Skip calling yourself
+                
+                const targetId = `${roomHash}-cam-${i}`;
+                const targetSlot = 'cam' + i;
 
-            // Toggle only if the camera has physical flash capabilities (usually only phones)
-            if (capabilities.torch) {
-                try {
-                    await videoTrack.applyConstraints({
-                        advanced: [{ torch: turnOn }]
-                    });
-                } catch (err) {
-                    console.error("Failed to toggle flashlight: ", err);
+                console.log(`Pinging slot: ${targetId}`);
+                
+                // Call target camera's WebRTC stream
+                const call = peer.call(targetId, localCameraStream);
+                if (call) {
+                    handleIncomingCall(call, targetSlot);
+                }
+
+                // Call target camera's WebRTC data channel
+                const conn = peer.connect(targetId);
+                if (conn) {
+                    handleIncomingData(conn, targetSlot);
                 }
             }
         }
 
-        // 4. Trigger flashlight events
-        function triggerFlashlight(isPressed) {
-            // Only fire if the active camera stream matches the user's camera stream
-            if (connectedStreams[currentCamId] === localCameraStream) {
-                toggleDeviceFlashlight(localCameraStream, isPressed);
+        // Parse slot strings like "cam1", "cam2" from room-hash string formats
+        function getSlotFromPeerId(peerId) {
+            const parts = peerId.split('-cam-');
+            if (parts.length === 2) {
+                return 'cam' + parts[1];
+            }
+            return null;
+        }
+
+        // Setup handlers for when other players connect to us
+        function setupNetworkListeners() {
+            peer.on('call', (call) => {
+                const targetSlot = getSlotFromPeerId(call.peer);
+                if (!targetSlot) return;
+
+                console.log(`Incoming call stream from ${targetSlot}`);
+                call.answer(localCameraStream); // Reciprocate feed
+                handleIncomingCall(call, targetSlot);
+            });
+
+            peer.on('connection', (conn) => {
+                const targetSlot = getSlotFromPeerId(conn.peer);
+                if (!targetSlot) return;
+
+                console.log(`Incoming data socket from ${targetSlot}`);
+                handleIncomingData(conn, targetSlot);
+            });
+        }
+
+        // Process Stream Connections
+        function handleIncomingCall(call, targetSlot) {
+            call.on('stream', (remoteStream) => {
+                connectedStreams[targetSlot] = remoteStream;
+                updateCameraMapUI();
+                updateMonitorFeed();
+            });
+
+            call.on('close', () => {
+                connectedStreams[targetSlot] = null;
+                updateCameraMapUI();
+                updateMonitorFeed();
+            });
+        }
+
+        // Process Flashlight Socket Connection Controls
+        function handleIncomingData(conn, targetSlot) {
+            dataConnections[targetSlot] = conn;
+
+            conn.on('data', (data) => {
+                if (data.type === 'flashlight') {
+                    toggleDeviceFlashlight(localCameraStream, data.state);
+                }
+            });
+
+            conn.on('close', () => {
+                dataConnections[targetSlot] = null;
+            });
+        }
+
+        // 5. Monitor Rendering Engine
+        function updateMonitorFeed() {
+            if (connectedStreams[currentCamId]) {
+                mainMonitor.srcObject = connectedStreams[currentCamId];
+                mainMonitor.style.display = "block";
+                offlineScreen.style.display = "none";
+            } else {
+                mainMonitor.srcObject = null;
+                mainMonitor.style.display = "none";
+                offlineScreen.style.display = "flex";
             }
         }
 
-        // Start everything up on load
+        // Update Camera Map UI layout
+        function updateCameraMapUI() {
+            for (let i = 1; i <= 4; i++) {
+                const btn = document.querySelector(`.cam-btn[data-cam="cam${i}"]`);
+                if (!btn) continue;
+                
+                const isOnline = !!connectedStreams['cam' + i];
+                if (isOnline) {
+                    btn.classList.add('online');
+                    if (i === currentSlot) {
+                        btn.innerText = `CAM 0${i} (YOU)`;
+                    } else {
+                        btn.innerText = `CAM 0${i}`;
+                    }
+                } else {
+                    btn.classList.remove('online');
+                    btn.innerText = `CAM 0${i} (OFFLINE)`;
+                }
+            }
+        }
+
+        // 6. Camera Switch Controls
+        function switchCamera(event, camId, labelText) {
+            // Turn off your flashlight on the current feed before switching
+            triggerFlashlight(false);
+
+            currentCamId = camId;
+            camLabel.innerText = labelText;
+            updateMonitorFeed();
+
+            // Toggle Map active layout highlighting
+            buttons.forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.querySelector(`.cam-btn[data-cam="${camId}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        // 7. Hardware LED Toggle (With cross-browser safety checks)
+        async function toggleDeviceFlashlight(stream, turnOn) {
+            if (!stream) return;
+            const videoTrack = stream.getVideoTracks()[0];
+            if (!videoTrack) return;
+
+            if (typeof videoTrack.getCapabilities === 'function') {
+                try {
+                    const capabilities = videoTrack.getCapabilities();
+                    if (capabilities.torch) {
+                        await videoTrack.applyConstraints({
+                            advanced: [{ torch: turnOn }]
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Failed to trigger phone hardware light: ", err);
+                }
+            }
+        }
+
+        // 8. Flashlight System Orchestrator
+        function triggerFlashlight(isPressed) {
+            const monitorContainer = document.querySelector('.monitor-container');
+            
+            // 1. Adjust local UI lighting display
+            if (isPressed) {
+                monitorContainer.classList.add('light-on');
+            } else {
+                monitorContainer.classList.remove('light-on');
+            }
+            
+            // 2. Route the trigger signal
+            if (currentCamId === 'cam' + currentSlot) {
+                // Flashlight is being used on our own camera
+                toggleDeviceFlashlight(localCameraStream, isPressed);
+            } else {
+                // Flashlight is requested on a remote connection
+                const conn = dataConnections[currentCamId];
+                if (conn && conn.open) {
+                    conn.send({ type: 'flashlight', state: isPressed });
+                }
+            }
+        }
+
+        // Clean up peer registration actively on exit
+        window.addEventListener('beforeunload', () => {
+            if (peer) peer.destroy();
+        });
+
+        // Initialize script on startup
         window.onload = startBroadcasting;
     </script>
 </body>
