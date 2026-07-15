@@ -2,193 +2,240 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Survival Cam Interface</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FNAF Security Cameras</title>
     <style>
-        body { 
-            background-color: #111; 
-            color: white; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            font-family: monospace; 
-            margin-top: 50px;
+        * {
+            box-sizing: border-box;
         }
-        #wrapper { 
-            width: 640px; 
-            height: 480px; 
-            overflow: hidden; 
-            position: relative; 
-            border: 5px solid #333; 
-            background-color: #000; 
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            margin: 0;
+            /* Prevents pull-to-refresh on mobile */
+            overscroll-behavior-y: contain; 
         }
-        #video { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-            transform: scale(1.5); 
-            filter: grayscale(100%) brightness(1.5) contrast(1.2); 
-            display: none; 
+
+        .monitor-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #111;
         }
-        #ui { 
-            position: absolute; 
-            top: 10px; 
-            left: 10px; 
-            color: red; 
-            font-family: monospace; 
-            background: rgba(0,0,0,0.7); 
-            padding: 15px; 
-            font-size: 18px; 
-            z-index: 10; 
-            border: 1px solid red;
+
+        /* The actual video feed */
+        #main-monitor {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: grayscale(70%) contrast(140%) brightness(80%);
         }
-        #motion-detector { 
-            color: lime; 
-            display: none; 
-            margin-top: 10px; 
-            font-weight: bold; 
-            animation: blink 1s infinite;
+
+        /* FNAF Scanline Effect */
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            pointer-events: none; /* Lets you click through the overlay */
+            z-index: 10;
         }
-        @keyframes blink {
-            50% { opacity: 0; }
+
+        .cam-label {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+            z-index: 20;
+            letter-spacing: 2px;
         }
-        .controls { 
-            margin-top: 15px; 
+
+        /* Flashlight Button - FNAF 2 Style */
+        #flashlight-btn {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            font-family: inherit;
+            font-weight: bold;
+            background: rgba(30, 30, 30, 0.8);
+            color: white;
+            border: 2px solid white;
+            cursor: pointer;
+            user-select: none;
+            z-index: 20;
+            touch-action: none; /* Prevents mobile browser zooming */
+            box-shadow: 0 0 10px rgba(255,255,255,0.2);
         }
-        button { 
-            padding: 10px 20px; 
-            margin: 5px; 
-            font-family: monospace; 
-            font-size: 16px;
-            background: #333; 
-            color: white; 
-            border: 2px solid #555; 
-            cursor: pointer; 
+
+        #flashlight-btn:active {
+            background: white;
+            color: black;
+            box-shadow: 0 0 20px rgba(255,255,255,0.8);
         }
-        button:hover { 
-            background: #555; 
+
+        /* Camera Switcher Map */
+        .camera-map {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 250px;
+            border: 2px solid white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            z-index: 20;
         }
-        button:disabled {
-            background: #222;
-            color: #555;
-            border-color: #333;
-            cursor: not-allowed;
+
+        .cam-btn {
+            background: transparent;
+            color: white;
+            border: 1px solid white;
+            padding: 15px 0;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: background 0.1s;
+        }
+
+        .cam-btn.active {
+            background: white;
+            color: black;
         }
     </style>
 </head>
 <body>
 
-    <div id="wrapper">
-        <video id="video" autoplay playsinline></video>
-        <div id="ui">
-            <div id="battery-display">Power: 100%</div>
-            <div id="clock">12 AM</div>
-            <div id="motion-detector">⚠️ MOTION DETECTED ⚠️</div>
-        </div>
+    <!-- Monitor View -->
+    <div class="monitor-container">
+        <video id="main-monitor" autoplay playsinline muted></video>
+        <div class="scanlines"></div>
+        <div class="cam-label" id="cam-label">CAM 01</div>
+        
+        <!-- Flashlight supports both mouse clicks and mobile taps -->
+        <button id="flashlight-btn" 
+                onmousedown="triggerFlashlight(true)" 
+                onmouseup="triggerFlashlight(false)"
+                onmouseleave="triggerFlashlight(false)"
+                ontouchstart="triggerFlashlight(true); event.preventDefault();" 
+                ontouchend="triggerFlashlight(false); event.preventDefault();">
+            🔦 LIGHT
+        </button>
     </div>
 
-    <div class="controls">
-        <button id="camBtn" onclick="toggleCam()">Toggle Camera</button>
-        <button id="leftBtn" onclick="pan(-50)">Pan Left</button>
-        <button id="rightBtn" onclick="pan(50)">Pan Right</button>
+    <!-- Camera Controls -->
+    <div class="camera-map">
+        <button class="cam-btn active" onclick="switchCamera(event, 'cam1', 'CAM 01')">CAM 01</button>
+        <button class="cam-btn" onclick="switchCamera(event, 'cam2', 'CAM 02')">CAM 02</button>
+        <button class="cam-btn" onclick="switchCamera(event, 'cam3', 'CAM 03')">CAM 03</button>
+        <button class="cam-btn" onclick="switchCamera(event, 'cam4', 'CAM 04')">CAM 04</button>
     </div>
-
-    <audio id="errorSound" src="https://actions.google.com/sounds/v1/ambiences/ambient_hum_air_conditioner.ogg" loop></audio>
-    <audio id="dawnSound" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg"></audio>
 
     <script>
-        const video = document.getElementById('video');
-        const errorSound = document.getElementById('errorSound');
-        const dawnSound = document.getElementById('dawnSound');
-        const wrapper = document.getElementById('wrapper');
-        const motionDetector = document.getElementById('motion-detector');
-        const camBtn = document.getElementById('camBtn');
-        const leftBtn = document.getElementById('leftBtn');
-        const rightBtn = document.getElementById('rightBtn');
-        
-        let x = 0;
-        let power = 100;
-        let cameraOpen = false;
-        let hour = 12;
+        const mainMonitor = document.getElementById('main-monitor');
+        const camLabel = document.getElementById('cam-label');
+        const buttons = document.querySelectorAll('.cam-btn');
 
-        // 1. Initialize Webcam
-        async function start() {
+        let localCameraStream = null;
+        let currentCamId = 'cam1'; 
+
+        // Dictionary to hold streams (simulating a multiplayer environment)
+        const connectedStreams = {
+            'cam1': null, 
+            'cam2': null,
+            'cam3': null,
+            'cam4': null
+        };
+
+        // 1. Start the Rear Camera
+        async function startBroadcasting() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
+                localCameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "environment", // Forces back camera
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                
+                // Assign our local camera to CAM 01 for testing purposes
+                connectedStreams['cam1'] = localCameraStream;
+                mainMonitor.srcObject = connectedStreams['cam1'];
+
             } catch (err) {
-                console.error("Camera access denied.", err);
+                console.error("Camera access denied or unavailable: ", err);
+                camLabel.innerText = "ERROR: NO SIGNAL";
             }
         }
-        start();
 
-        // 2. Camera Controls
-        function toggleCam() {
-            if (power <= 0) return;
-            cameraOpen = !cameraOpen;
-            video.style.display = cameraOpen ? 'block' : 'none';
-        }
+        // 2. Switch Cameras
+        function switchCamera(event, camId, labelText) {
+            currentCamId = camId;
+            camLabel.innerText = labelText;
 
-        function pan(val) { 
-            if (!cameraOpen || power <= 0) return;
-            x += val; 
-            if (x > 150) x = 150;
-            if (x < -150) x = -150;
-            video.style.transform = `scale(1.5) translateX(${x}px)`; 
-        }
-
-        // 3. Power Drain Logic (Updates every second)
-        setInterval(() => {
-            if (power <= 0) return;
-            
-            power -= cameraOpen ? 0.2 : 0.05;
-            document.getElementById('battery-display').innerText = `Power: ${Math.floor(power)}%`;
-            
-            if (power <= 0) {
-                power = 0;
-                document.getElementById('battery-display').innerText = `Power: 0%`;
-                wrapper.style.backgroundColor = "black";
-                video.style.display = "none";
-                cameraOpen = false;
-                motionDetector.style.display = "none";
-                
-                camBtn.disabled = true;
-                leftBtn.disabled = true;
-                rightBtn.disabled = true;
-
-                errorSound.play().catch(e => console.log("Audio play blocked by browser. Click the screen first."));
-            }
-        }, 1000);
-
-        // 4. Clock Logic (Updates every 60 seconds)
-        setInterval(() => {
-            if (power > 0 && hour !== 6) {
-                hour = hour === 12 ? 1 : hour + 1;
-                document.getElementById('clock').innerText = `${hour} AM`;
-                
-                if (hour === 6) {
-                    dawnSound.play().catch(e => console.log("Audio play blocked."));
-                    setTimeout(() => alert("6 AM - You survived!"), 500);
-                }
-            }
-        }, 60000);
-
-        // 5. Simulated Motion Detector
-        setInterval(() => {
-            if (power > 0 && cameraOpen) {
-                const isMotion = Math.random() > 0.75; 
-                motionDetector.style.display = isMotion ? 'block' : 'none';
-                
-                if (isMotion) {
-                    setTimeout(() => {
-                        motionDetector.style.display = 'none';
-                    }, 2000);
-                }
+            // Change video feed
+            if (connectedStreams[camId]) {
+                mainMonitor.srcObject = connectedStreams[camId];
             } else {
-                motionDetector.style.display = 'none';
+                mainMonitor.srcObject = null; // Simulates an empty room/static
             }
-        }, 4000);
 
+            // Update UI buttons
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // 3. Hardware Flashlight Control
+        async function toggleDeviceFlashlight(stream, turnOn) {
+            if (!stream) return;
+            
+            const videoTrack = stream.getVideoTracks()[0];
+            const capabilities = videoTrack.getCapabilities();
+
+            if (capabilities.torch) {
+                try {
+                    await videoTrack.applyConstraints({
+                        advanced: [{ torch: turnOn }]
+                    });
+                } catch (err) {
+                    console.error("Failed to toggle torch: ", err);
+                }
+            }
+        }
+
+        // 4. Button Trigger Logic
+        function triggerFlashlight(isPressed) {
+            // Only turn on the light if we are currently viewing the camera that has the light
+            if (connectedStreams[currentCamId] === localCameraStream) {
+                toggleDeviceFlashlight(localCameraStream, isPressed);
+            }
+        }
+
+        // Request camera immediately on load
+        window.onload = startBroadcasting;
     </script>
 </body>
 </html>
