@@ -61,7 +61,7 @@
             justify-content: center;
             align-items: center;
             background-color: #050505;
-            overflow: hidden; /* Prevent scaled video from bleeding off the screen */
+            overflow: hidden; 
         }
 
         /* The Live Feed styling (Scaled up slightly to allow room to pan) */
@@ -72,7 +72,7 @@
             object-fit: cover;
             filter: grayscale(60%) contrast(140%) brightness(70%);
             z-index: 1;
-            transform: scale(1.3) translateX(0%); /* Setup for panning */
+            transform: scale(1.3) translateX(0%); 
             transform-origin: center center;
             will-change: transform;
         }
@@ -86,7 +86,7 @@
             z-index: 2;
             opacity: 0;
             transition: opacity 0.1s ease;
-            transform: scale(1.3) translateX(0%); /* Setup for panning parallax */
+            transform: scale(1.3) translateX(0%); 
             transform-origin: center center;
             will-change: transform;
         }
@@ -134,7 +134,7 @@
             text-shadow: 2px 2px 0 #000; z-index: 20; letter-spacing: 2px;
         }
 
-        /* Blinking Recording Dot (Only shown to Camera users) */
+        /* Blinking Recording Dot */
         .recording-dot {
             position: absolute;
             top: 85px; right: 40px;
@@ -147,7 +147,7 @@
             animation: blink 1.5s infinite;
         }
 
-        /* Local Warning Banner for Cam Users when they trigger movement */
+        /* Local Warning Banner for Cam Users */
         .motion-alert-banner {
             position: absolute;
             top: 130px;
@@ -191,7 +191,7 @@
             background: white; color: black; box-shadow: 0 0 20px rgba(255,255,240,0.8);
         }
 
-        /* Camera Switcher (Only shown to Guard) */
+        /* Camera Switcher Map (Only shown to Guard) */
         .camera-map {
             position: absolute;
             bottom: 30px; right: 30px;
@@ -215,7 +215,7 @@
             border-color: #fff !important; box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
-        /* Retro Terminal Style Debug Log */
+        /* Debug Log Terminal */
         .system-log {
             position: absolute;
             bottom: 30px;
@@ -235,7 +235,6 @@
             text-shadow: 0 0 2px #00ff00;
         }
 
-        /* Blinding screen flash for non-compatible phones */
         #screen-flash {
             position: absolute;
             top: 0; left: 0;
@@ -255,10 +254,9 @@
 </head>
 <body>
 
-    <!-- Blinding Screen Flash (Hardware Fallback) -->
     <div id="screen-flash"></div>
 
-    <!-- Upper Control Bar -->
+    <!-- Status Bar -->
     <div class="lobby-bar">
         <div>
             ROOM: <span id="room-id-display">...</span> | 
@@ -267,7 +265,7 @@
         <button class="share-btn" onclick="copyRoomLink()">📋 COPY ROOM LINK</button>
     </div>
 
-    <!-- Monitor View -->
+    <!-- Monitor Arena -->
     <div class="monitor-container">
         <video id="main-monitor" autoplay playsinline muted></video>
         <div class="light-overlay" id="light-overlay"></div>
@@ -278,10 +276,8 @@
         <div class="cam-label" id="cam-label">LOBBY</div>
         <div class="recording-dot" id="recording-dot"></div>
 
-        <!-- Camera User Local Motion Banner -->
         <div class="motion-alert-banner" id="motion-alert-banner">⚠️ MOTION DETECTED - FEED SECURED ⚠️</div>
         
-        <!-- Guard Controls -->
         <button id="flashlight-btn" 
                 onmousedown="triggerFlashlight(true)" 
                 onmouseup="triggerFlashlight(false)"
@@ -292,9 +288,10 @@
         </button>
     </div>
 
-    <!-- FNAF Rolling Terminal System Log -->
+    <!-- Scrolling Debug Console -->
     <div class="system-log" id="system-log">> TERMINAL INITIALIZED...</div>
 
+    <!-- Map Grid -->
     <div class="camera-map" id="camera-map">
         <button class="cam-btn active" data-cam="cam1" onclick="switchCamera(event, 'cam1', 'CAM 01')">CAM 01 (OFFLINE)</button>
         <button class="cam-btn" data-cam="cam2" onclick="switchCamera(event, 'cam2', 'CAM 02')">CAM 02 (OFFLINE)</button>
@@ -313,25 +310,23 @@
         let currentCamId = 'cam1'; 
         let peer = null;
         let currentSlot = 1;
+        let wakeLock = null;
 
         const connectedStreams = { 'cam1': null, 'cam2': null, 'cam3': null, 'cam4': null };
         const dataConnections = { 'cam1': null, 'cam2': null, 'cam3': null, 'cam4': null };
-        
-        // Motion state tracking (Guard monitors these)
         const motionStates = { 'cam1': false, 'cam2': false, 'cam3': false, 'cam4': false };
 
         let guardDataConnection = null; 
         let guardMediaCall = null;
 
-        // Motion analysis variables (Cameras monitor these)
         let motionCanvas = null;
         let motionCtx = null;
         let prevFrameData = null;
         let motionTimeout = null;
         let isCurrentlyMoving = false;
-        let ignoreMotionUntil = 0; // Safeguard when flashlight state changes
+        let ignoreMotionUntil = 0;
 
-        // 1. Room Generation
+        // Room Generation
         let roomHash = window.location.hash.substring(1);
         if (!roomHash) {
             roomHash = "fnaf-" + Math.floor(1000 + Math.random() * 9000);
@@ -355,20 +350,44 @@
         }
 
         // ==========================================
-        // GUARD LOGIC (First to Join)
+        // WAKE LOCK CONTROLLER (No sleeping!)
+        // ==========================================
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    logSystem("🔋 WAKE LOCK ACTIVE - SCREEN ONLINE");
+                } else {
+                    logSystem("Wake Lock unsupported on this browser.");
+                }
+            } catch (err) {
+                logSystem(`Wake Lock Error: ${err.message}`);
+            }
+        }
+
+        // Re-acquire lock if user switches tabs and returns
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+
+        // ==========================================
+        // GUARD MODE
         // ==========================================
         function tryBecomeGuard() {
             peer = new Peer(`${roomHash}-guard`);
 
             peer.on('open', (id) => {
                 myRole = 'guard';
-                document.getElementById('slot-status').innerText = "SECURITY GUARD (NO CAM REQ)";
+                document.getElementById('slot-status').innerText = "SECURITY GUARD";
                 logSystem("ASSIGNED ROLE: SECURITY GUARD");
                 
                 document.getElementById('camera-map').style.display = 'grid';
                 document.getElementById('flashlight-btn').style.display = 'block';
                 camLabel.innerText = "CAM 01";
 
+                requestWakeLock(); // Keep Guard display alive!
                 setupGuardListeners();
                 updateMonitorFeed();
             });
@@ -388,12 +407,12 @@
                 const targetSlot = getSlotFromPeerId(call.peer);
                 if (!targetSlot) return;
 
-                logSystem(`FEED ATTEMPT FROM CAM 0${targetSlot.slice(3)}`);
+                logSystem(`FEED ATTEMPT: ${targetSlot.toUpperCase()}`);
                 call.answer(); 
                 
                 call.on('stream', (remoteStream) => {
                     connectedStreams[targetSlot] = remoteStream;
-                    logSystem(`CAM 0${targetSlot.slice(3)} STREAM IS LIVE`);
+                    logSystem(`${targetSlot.toUpperCase()} FEED STREAMING LIVE`);
                     updateCameraMapUI();
                     updateMonitorFeed();
                 });
@@ -401,7 +420,7 @@
                 call.on('close', () => {
                     connectedStreams[targetSlot] = null;
                     motionStates[targetSlot] = false; 
-                    logSystem(`CAM 0${targetSlot.slice(3)} STREAM TERMINATED`);
+                    logSystem(`${targetSlot.toUpperCase()} FEED OFFLINE`);
                     updateCameraMapUI();
                     updateMonitorFeed();
                 });
@@ -411,18 +430,18 @@
                 const targetSlot = getSlotFromPeerId(conn.peer);
                 if (!targetSlot) return;
 
-                logSystem(`DATA CHANNEL ATTEMPT: CAM 0${targetSlot.slice(3)}`);
+                logSystem(`DATA LINK REQUEST: ${targetSlot.toUpperCase()}`);
 
                 conn.on('open', () => {
                     dataConnections[targetSlot] = conn;
-                    logSystem(`CAM 0${targetSlot.slice(3)} DATA CHANNEL ONLINE`);
+                    logSystem(`${targetSlot.toUpperCase()} CONTROL LINK ACTIVE`);
                     updateCameraMapUI();
                 });
 
                 conn.on('data', (data) => {
                     if (data.type === 'motion') {
                         motionStates[targetSlot] = data.state;
-                        logSystem(`CAM 0${targetSlot.slice(3)} MOTION STATE: ${data.state ? "DETECTED" : "CLEARED"}`);
+                        logSystem(`${targetSlot.toUpperCase()} MOTION: ${data.state ? "TRIGGERED" : "CLEARED"}`);
                         updateCameraMapUI();
                         updateMonitorFeed();
                     }
@@ -431,7 +450,7 @@
                 conn.on('close', () => {
                     dataConnections[targetSlot] = null;
                     motionStates[targetSlot] = false;
-                    logSystem(`CAM 0${targetSlot.slice(3)} DATA CHANNEL OFFLINE`);
+                    logSystem(`${targetSlot.toUpperCase()} DATA LINK TERMINATED`);
                     updateCameraMapUI();
                     updateMonitorFeed();
                 });
@@ -439,53 +458,42 @@
         }
 
         // ==========================================
-        // CAMERA LOGIC (Deep lens-probing flashlight setup)
+        // CAMERA MODE
         // ==========================================
         async function initCameraMode() {
             myRole = 'cam';
-            document.getElementById('slot-status').innerText = "SCANNING LENSES...";
+            document.getElementById('slot-status').innerText = "PROBING LENSES...";
             logSystem("ROLE: REMOTE SECURITY CAMERA");
             
             try {
-                logSystem("Requesting initial permission...");
-                
-                // 1. Get a temporary stream to unlock browser labels & IDs
+                logSystem("Requesting lens permissions...");
                 let tempStream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: 'environment' }
                 });
 
-                // 2. Map every video device connected to the phone
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(d => d.kind === 'videoinput');
 
-                // Kill the temporary stream to free the physical lens hardware for scanning
                 tempStream.getTracks().forEach(t => t.stop());
 
-                logSystem(`FOUND ${videoDevices.length} LENS(ES). TESTING FOR TORCH...`);
-                
+                logSystem(`PROBING ${videoDevices.length} HARDWARE LENSES...`);
                 let foundFlashStream = null;
 
-                // 3. Probe each individual camera to find the one with the physical flash
                 for (const device of videoDevices) {
                     try {
-                        logSystem(`SCANNING LENS: ${device.label || 'Camera'}`);
                         const testStream = await navigator.mediaDevices.getUserMedia({
                             video: { deviceId: { exact: device.deviceId } }
                         });
                         const testTrack = testStream.getVideoTracks()[0];
 
-                        // Quirk workaround: wait for hardware registration
                         await new Promise(resolve => setTimeout(resolve, 250));
-
                         const capabilities = typeof testTrack.getCapabilities === 'function' ? testTrack.getCapabilities() : null;
 
                         if (capabilities && capabilities.torch) {
-                            // Jackpot! Lock in this stream for our camera feed
                             foundFlashStream = testStream;
-                            logSystem(`LOCKED TARGET LENS: ${device.label || 'Main Flash-Camera'}`);
+                            logSystem(`LOCKED PRIMARY LENS [TORCH OK]`);
                             break; 
                         } else {
-                            // Close non-flash tracks so they don't block resource allocation
                             testTrack.stop();
                         }
                     } catch (e) {
@@ -493,23 +501,22 @@
                     }
                 }
 
-                // 4. Default Fallback if no explicit torch capability is self-advertised
                 if (foundFlashStream) {
                     localCameraStream = foundFlashStream;
                 } else {
-                    logSystem("NO LENS ADVERTISED TORCH. INITIATING ENVIRONMENT DEFAULT.");
+                    logSystem("NO NATIVE TORCH DETECTED. INITIATING DEFAULT.");
                     localCameraStream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
                         audio: false
                     });
                 }
 
-                logSystem("STREAM SYSTEM INITIATED");
+                logSystem("SYSTEM INITIATED");
                 tryRegisterCamSlot(1);
 
             } catch (err) {
                 document.getElementById('slot-status').innerText = "CAMERA BLOCKED";
-                logSystem("CRITICAL: CAMERA DENIED OR HARDWARE BUSY");
+                logSystem("CRITICAL: HARDWARE ACCESS REFUSED");
                 console.error(err);
             }
         }
@@ -522,10 +529,14 @@
             }
 
             currentSlot = slotNum;
+            if (peer) {
+                try { peer.destroy(); } catch(e){}
+            }
+
             peer = new Peer(`${roomHash}-cam-${slotNum}`);
 
             peer.on('open', (id) => {
-                document.getElementById('slot-status').innerText = `LIVE BROADCASTING...`;
+                document.getElementById('slot-status').innerText = `BROADCASTING`;
                 logSystem(`REGISTERED AS CAMERA 0${slotNum}`);
                 
                 document.getElementById('camera-map').style.display = 'none';
@@ -533,16 +544,17 @@
                 document.getElementById('recording-dot').style.display = 'block';
                 camLabel.innerText = `CAM 0${slotNum} - RECORDING`;
                 
-                // Show local camera stream so the user knows where they are pointing
                 mainMonitor.srcObject = localCameraStream;
                 mainMonitor.style.display = "block";
                 offlineScreen.style.display = "none";
+
+                requestWakeLock(); // Keep Camera phone screen awake!
 
                 peer.on('error', (err) => {
                     logSystem(`NET ERROR: ${err.type}`);
                     if (err.type === 'peer-unavailable') {
                         logSystem("GUARD DESK OFFLINE. RETRYING...");
-                        setTimeout(camConnectToGuard, 3000);
+                        setTimeout(camConnectToGuard, 4000);
                     }
                 });
 
@@ -552,15 +564,19 @@
 
             peer.on('error', (err) => {
                 if (err.type === 'unavailable-id') {
+                    logSystem(`CAM 0${slotNum} OCCUPIED. ESCALATING...`);
                     peer.destroy();
-                    tryRegisterCamSlot(slotNum + 1); 
+                    // 600ms cooldown ensures standard socket teardown before building next slot
+                    setTimeout(() => {
+                        tryRegisterCamSlot(slotNum + 1); 
+                    }, 600);
                 }
             });
         }
 
         function camConnectToGuard() {
             const guardId = `${roomHash}-guard`;
-            logSystem(`CONNECTING TO GUARD DESK...`);
+            logSystem(`LINKING TO DESK...`);
 
             if (guardDataConnection) { try { guardDataConnection.close(); } catch(e){} }
             if (guardMediaCall) { try { guardMediaCall.close(); } catch(e){} }
@@ -568,27 +584,27 @@
             const conn = peer.connect(guardId);
             conn.on('open', () => {
                 guardDataConnection = conn;
-                logSystem(`DATA SENT TO GUARD DESK`);
+                logSystem(`LINK SECURED`);
                 sendMotionStateToGuard(isCurrentlyMoving);
             });
 
             conn.on('data', (data) => {
-                logSystem(`CMD RECEIVED: ${data.type.toUpperCase()} = ${data.state ? "ON" : "OFF"}`);
+                logSystem(`CMD RECEIVED: ${data.type.toUpperCase()}`);
                 if (data.type === 'flashlight') {
                     toggleDeviceFlashlight(localCameraStream, data.state);
                 }
             });
 
             conn.on('close', () => {
-                logSystem(`LOST GUARD DESK. RE-CONNECTING...`);
-                setTimeout(camConnectToGuard, 3000);
+                logSystem(`LINK LOST. RECONNECTING...`);
+                setTimeout(camConnectToGuard, 4000);
             });
 
             guardMediaCall = peer.call(guardId, localCameraStream);
         }
 
         // ==========================================
-        // MOTION DETECTION ENGINE (Camera Side)
+        // MOTION DETECTION
         // ==========================================
         function initMotionDetection() {
             motionCanvas = document.createElement('canvas');
@@ -601,15 +617,12 @@
 
         function analyzeCameraMovementFrame() {
             if (!localCameraStream || !mainMonitor || mainMonitor.paused || mainMonitor.ended) return;
-
-            // If we are actively flashing the light, ignore frames to prevent false positives
             if (Date.now() < ignoreMotionUntil) {
                 prevFrameData = null; 
                 return; 
             }
 
             try {
-                // Draws raw hardware frames, unaffected by manual UI/CSS panning transforms
                 motionCtx.drawImage(mainMonitor, 0, 0, motionCanvas.width, motionCanvas.height);
                 const currentFrame = motionCtx.getImageData(0, 0, motionCanvas.width, motionCanvas.height);
                 const data = currentFrame.data;
@@ -631,15 +644,12 @@
                     }
 
                     const changeRatio = changedPixels / totalPixels;
-                    const motionThreshold = 0.05; 
-
-                    if (changeRatio > motionThreshold) {
+                    if (changeRatio > 0.05) {
                         triggerMotionState(true);
                     } else {
                         triggerMotionState(false);
                     }
                 }
-
                 prevFrameData = new Uint8ClampedArray(data); 
             } catch (e) {}
         }
@@ -678,14 +688,11 @@
         let touchStartX = 0;
         let basePan = 0;
 
-        // Desktop Pointer Mapping (Look left/right near screen boundaries)
         window.addEventListener('mousemove', (e) => {
             const percent = e.clientX / window.innerWidth;
-            // Map percentage to target transform window (+12% to -12%)
             targetPan = (0.5 - percent) * 24; 
         });
 
-        // Mobile Swiping Tracking
         window.addEventListener('touchstart', (e) => {
             touchStartX = e.touches[0].clientX;
             basePan = targetPan;
@@ -695,13 +702,10 @@
             const touchX = e.touches[0].clientX;
             const deltaX = touchX - touchStartX;
             const deltaPercent = (deltaX / window.innerWidth) * 24;
-            // Clamped boundaries to match scale coverage
             targetPan = Math.max(-12, Math.min(12, basePan + deltaPercent));
         }, { passive: true });
 
-        // Heavy, mechanical panning loop using LERP (Linear Interpolation)
         function panAnimateLoop() {
-            // Damping set to 0.04 to give it that slow, industrial motor lag
             currentPan += (targetPan - currentPan) * 0.04; 
 
             if (mainMonitor) {
@@ -709,21 +713,21 @@
             }
             const lightOverlay = document.getElementById('light-overlay');
             if (lightOverlay) {
-                // Subtle 1.08x scale difference generates a gorgeous parallax effect with the spotlight
                 lightOverlay.style.transform = `scale(1.3) translateX(${currentPan * 1.08}%)`;
             }
             requestAnimationFrame(panAnimateLoop);
         }
 
-        // Initialize Panning Loop
         panAnimateLoop();
 
         // ==========================================
-        // SHARED UTILITIES
+        // UTILITIES
         // ==========================================
         function getSlotFromPeerId(peerId) {
-            const parts = peerId.split('-cam-');
-            return parts.length === 2 ? 'cam' + parts[1] : null;
+            const index = peerId.lastIndexOf('-cam-');
+            if (index === -1) return null;
+            const slotNum = peerId.substring(index + 5); 
+            return 'cam' + slotNum;
         }
 
         function sendMotionStateToGuard(active) {
@@ -770,7 +774,8 @@
                 const btn = document.querySelector(`.cam-btn[data-cam="${slotKey}"]`);
                 if (!btn) continue;
                 
-                if (connectedStreams[slotKey]) {
+                // Show camera as ONLINE if we have either a live stream OR a live control socket
+                if (connectedStreams[slotKey] || dataConnections[slotKey]) {
                     btn.classList.add('online');
                     
                     if (motionStates[slotKey]) {
@@ -804,32 +809,27 @@
             if (activeBtn) activeBtn.classList.add('active');
         }
 
-        // Hardware Flashlight Toggler (Uses the probed stream tracks)
         async function toggleDeviceFlashlight(stream, turnOn) {
             if (!stream) return;
             const track = stream.getVideoTracks()[0];
             if (!track) return;
 
-            // Stop motion detection calculations temporarily when the light state switches
             ignoreMotionUntil = Date.now() + 1200;
 
             try {
                 if (typeof track.getCapabilities !== 'function') {
-                    logSystem("HARDWARE TORCH NOT SUPPORTED. USING SCREEN FLASH.");
+                    logSystem("FLASH FALLBACK ENGAGED");
                     triggerScreenFlash(turnOn);
                     return;
                 }
 
                 const capabilities = track.getCapabilities();
                 if (capabilities && capabilities.torch) {
-                    logSystem(`APPLYING HARDWARE FLASHLIGHT: ${turnOn}`);
                     await track.applyConstraints({ advanced: [{ torch: turnOn }] });
                 } else {
-                    logSystem("NO HARDWARE TORCH CAPABILITY. USING SCREEN FLASH.");
                     triggerScreenFlash(turnOn);
                 }
             } catch (err) { 
-                logSystem(`TORCH API LIMITATION: USING SCREEN FLASH.`); 
                 triggerScreenFlash(turnOn);
             }
         }
@@ -840,7 +840,6 @@
             flashEl.style.display = turnOn ? 'block' : 'none';
         }
 
-        // Guard Light Button Controller
         function triggerFlashlight(isPressed) {
             if (myRole !== 'guard') return;
 
@@ -850,20 +849,17 @@
             
             const conn = dataConnections[currentCamId];
             if (conn) {
-                logSystem(`ROUTING LIGHT CMD TO ${currentCamId.toUpperCase()}`);
                 try {
                     conn.send({ type: 'flashlight', state: isPressed });
                 } catch (e) {
-                    logSystem(`ERROR SENDING LIGHT CMD: ${e.message}`);
+                    logSystem(`ERROR SENDING LIGHT`);
                 }
-            } else {
-                logSystem(`CANNOT SEND LIGHT: CAM OFFLINE`);
             }
         }
 
         window.addEventListener('beforeunload', () => { if (peer) peer.destroy(); });
 
-        // Bootstrap App
+        // Initialize Guard Application
         window.onload = tryBecomeGuard;
     </script>
 </body>
