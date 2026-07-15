@@ -131,7 +131,7 @@
             pointer-events: none; z-index: 5;
         }
 
-        /* TV Snow Static Effect - Modified to be a thick opaque barrier */
+        /* TV Snow Static Effect */
         #camera-static {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -139,8 +139,8 @@
             pointer-events: none;
             opacity: 0;
             background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
-            background-color: #151515; /* Solid background completely covers video feed */
-            transition: opacity 0.05s; /* Snappy transition */
+            background-color: #151515; 
+            transition: opacity 0.05s; 
         }
 
         .cam-label {
@@ -256,7 +256,7 @@
 
         #win-screen {
             position: absolute; top:0; left:0; width:100%; height:100%;
-            background: #000; color: white; display: flex; flex-direction: column;
+            background: #00; color: white; display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 250;
             font-size: 7rem; letter-spacing: 5px; font-weight: bold; text-shadow: 0 0 20px #fff;
             display: none; opacity: 0; transition: opacity 3s;
@@ -335,7 +335,7 @@
                 onmouseleave="triggerFlashlight(false)"
                 ontouchstart="triggerFlashlight(true); event.preventDefault();" 
                 ontouchend="triggerFlashlight(false); event.preventDefault();">
-            🔦 LIGHT
+            🔦 LIGHT (F)
         </button>
 
         <button id="toggle-monitor-btn" onclick="toggleMonitor()">MONITOR</button>
@@ -376,7 +376,7 @@
         let peer = null;
         let currentSlot = 1;
         let wakeLock = null;
-        let sabotageUsed = false; // Tracks if the generator has been compromised this night
+        let sabotageUsed = false; 
 
         const connectedStreams = { 'cam1': null, 'cam2': null, 'cam3': null, 'cam4': null };
         const dataConnections = { 'cam1': null, 'cam2': null, 'cam3': null, 'cam4': null };
@@ -428,11 +428,9 @@
                 offlineScreen.classList.add('pitch-black-outage');
                 offlineScreen.innerText = "FIX THE GENERATOR";
                 offlineScreen.style.display = "flex";
-                // Do not set mainMonitor.style.display to 'none'.
-                // Setting it to 'none' causes mobile OS engines to shut down the WebRTC video capture entirely.
             } else {
                 offlineScreen.classList.remove('pitch-black-outage');
-                offlineScreen.style.display = "none"; // Restore and reveal visual feed
+                offlineScreen.style.display = "none"; 
             }
         }
 
@@ -462,7 +460,7 @@
         let motionStaticTimeout = null;
         function triggerVisualStatic(duration = 250) {
             if (cameraStatic) {
-                cameraStatic.style.opacity = "1.0"; /* Make static completely thick (opaque) */
+                cameraStatic.style.opacity = "1.0"; 
                 clearTimeout(motionStaticTimeout);
                 motionStaticTimeout = setTimeout(() => { 
                     cameraStatic.style.opacity = "0"; 
@@ -668,7 +666,6 @@
         function triggerWin() {
             gameActive = false;
             triggerFlashlight(false);
-            playWinSound();
 
             for (let slot in dataConnections) {
                 const conn = dataConnections[slot];
@@ -719,7 +716,6 @@
                     }
                     if (data.type === 'motion' && isMonitorUp && !isPowerOut) {
                         if (targetSlot === currentCamId) {
-                            /* Blinds the guard with thick static for 600ms on motion. */
                             triggerVisualStatic(600); 
                         }
                     }
@@ -786,7 +782,7 @@
             setTimeout(checkMotionLoop, 150); 
         }
 
-        function tryRegisterCamSlot(slotNum) {
+        async function tryRegisterCamSlot(slotNum) {
             if (slotNum > 4) {
                 document.getElementById('slot-status').innerText = "ROOM FULL";
                 return;
@@ -951,7 +947,6 @@
                     camLabel.innerText = currentSlot === 1 ? `CAM 01 (GEN ROOM) - ONLINE` : `CAM 0${currentSlot} - ONLINE`;
                 }
                 if (data.type === 'win') {
-                    playWinSound();
                     document.getElementById('monitor-container').style.opacity = '1';
                     camLabel.innerText = "6 AM - CONGRATULATIONS!";
                 }
@@ -962,7 +957,7 @@
         }
 
         function triggerSabotage() {
-            if (sabotageUsed) return; // Prevent multi-triggers if clicked rapidly
+            if (sabotageUsed) return; 
             sabotageUsed = true;
 
             const btn = document.getElementById('sabotage-btn');
@@ -994,7 +989,6 @@
             document.getElementById('generator-repair-overlay').style.display = 'none';
             playGeneratorStartSound();
 
-            // Generator stays locked/disabled for the remainder of the night session
             const btn = document.getElementById('sabotage-btn');
             if (btn) {
                 btn.disabled = true;
@@ -1123,7 +1117,6 @@
             e.preventDefault();
         }
 
-        // Play win sound removed here as it is triggered differently now
         function onPuzzleEnd(e) {
             if (draggingFrom === null) return;
             
@@ -1290,6 +1283,30 @@
                 try { conn.send({ type: 'flashlight', state: isPressed }); } catch (e) {}
             }
         }
+
+        // ==========================================
+        // KEYBOARD HOTKEYS ENGINE
+        // ==========================================
+        let isFKeyPressed = false;
+
+        window.addEventListener('keydown', (e) => {
+            // Ignore keystrokes if the user is somehow focused on an input element
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            if (e.key === 'f' || e.key === 'F') {
+                if (!isFKeyPressed) {
+                    isFKeyPressed = true;
+                    triggerFlashlight(true);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'f' || e.key === 'F') {
+                isFKeyPressed = false;
+                triggerFlashlight(false);
+            }
+        });
 
         window.addEventListener('beforeunload', () => { if (peer) peer.destroy(); });
         window.onload = tryBecomeGuard;
