@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survival Cam Interface</title>
+    <style>
+        body { 
+            background-color: #111; 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            font-family: monospace; 
+            margin-top: 50px;
+        }
+        #wrapper { 
+            width: 640px; 
+            height: 480px; 
+            overflow: hidden; 
+            position: relative; 
+            border: 5px solid #333; 
+            background-color: #000; 
+        }
+        #video { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            transform: scale(1.5); 
+            filter: grayscale(100%) brightness(1.5) contrast(1.2); 
+            display: none; 
+        }
+        #ui { 
+            position: absolute; 
+            top: 10px; 
+            left: 10px; 
+            color: red; 
+            font-family: monospace; 
+            background: rgba(0,0,0,0.7); 
+            padding: 15px; 
+            font-size: 18px; 
+            z-index: 10; 
+            border: 1px solid red;
+        }
+        #motion-detector { 
+            color: lime; 
+            display: none; 
+            margin-top: 10px; 
+            font-weight: bold; 
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+        .controls { 
+            margin-top: 15px; 
+        }
+        button { 
+            padding: 10px 20px; 
+            margin: 5px; 
+            font-family: monospace; 
+            font-size: 16px;
+            background: #333; 
+            color: white; 
+            border: 2px solid #555; 
+            cursor: pointer; 
+        }
+        button:hover { 
+            background: #555; 
+        }
+        button:disabled {
+            background: #222;
+            color: #555;
+            border-color: #333;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="wrapper">
+        <video id="video" autoplay playsinline></video>
+        <div id="ui">
+            <div id="battery-display">Power: 100%</div>
+            <div id="clock">12 AM</div>
+            <div id="motion-detector">⚠️ MOTION DETECTED ⚠️</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="camBtn" onclick="toggleCam()">Toggle Camera</button>
+        <button id="leftBtn" onclick="pan(-50)">Pan Left</button>
+        <button id="rightBtn" onclick="pan(50)">Pan Right</button>
+    </div>
+
+    <audio id="errorSound" src="https://actions.google.com/sounds/v1/ambiences/ambient_hum_air_conditioner.ogg" loop></audio>
+    <audio id="dawnSound" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg"></audio>
+
+    <script>
+        const video = document.getElementById('video');
+        const errorSound = document.getElementById('errorSound');
+        const dawnSound = document.getElementById('dawnSound');
+        const wrapper = document.getElementById('wrapper');
+        const motionDetector = document.getElementById('motion-detector');
+        const camBtn = document.getElementById('camBtn');
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+        
+        let x = 0;
+        let power = 100;
+        let cameraOpen = false;
+        let hour = 12;
+
+        // 1. Initialize Webcam
+        async function start() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error("Camera access denied.", err);
+            }
+        }
+        start();
+
+        // 2. Camera Controls
+        function toggleCam() {
+            if (power <= 0) return;
+            cameraOpen = !cameraOpen;
+            video.style.display = cameraOpen ? 'block' : 'none';
+        }
+
+        function pan(val) { 
+            if (!cameraOpen || power <= 0) return;
+            x += val; 
+            if (x > 150) x = 150;
+            if (x < -150) x = -150;
+            video.style.transform = `scale(1.5) translateX(${x}px)`; 
+        }
+
+        // 3. Power Drain Logic (Updates every second)
+        setInterval(() => {
+            if (power <= 0) return;
+            
+            power -= cameraOpen ? 0.2 : 0.05;
+            document.getElementById('battery-display').innerText = `Power: ${Math.floor(power)}%`;
+            
+            if (power <= 0) {
+                power = 0;
+                document.getElementById('battery-display').innerText = `Power: 0%`;
+                wrapper.style.backgroundColor = "black";
+                video.style.display = "none";
+                cameraOpen = false;
+                motionDetector.style.display = "none";
+                
+                camBtn.disabled = true;
+                leftBtn.disabled = true;
+                rightBtn.disabled = true;
+
+                errorSound.play().catch(e => console.log("Audio play blocked by browser. Click the screen first."));
+            }
+        }, 1000);
+
+        // 4. Clock Logic (Updates every 60 seconds)
+        setInterval(() => {
+            if (power > 0 && hour !== 6) {
+                hour = hour === 12 ? 1 : hour + 1;
+                document.getElementById('clock').innerText = `${hour} AM`;
+                
+                if (hour === 6) {
+                    dawnSound.play().catch(e => console.log("Audio play blocked."));
+                    setTimeout(() => alert("6 AM - You survived!"), 500);
+                }
+            }
+        }, 60000);
+
+        // 5. Simulated Motion Detector
+        setInterval(() => {
+            if (power > 0 && cameraOpen) {
+                const isMotion = Math.random() > 0.75; 
+                motionDetector.style.display = isMotion ? 'block' : 'none';
+                
+                if (isMotion) {
+                    setTimeout(() => {
+                        motionDetector.style.display = 'none';
+                    }, 2000);
+                }
+            } else {
+                motionDetector.style.display = 'none';
+            }
+        }, 4000);
+
+    </script>
+</body>
+</html>
